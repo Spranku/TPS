@@ -5,7 +5,7 @@
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
 #include "NiagaraFunctionLibrary.h"
-#include "TPSCharacter.h"
+#include <TPS/Character/TPSCharacter.h>
 #include "Engine/World.h"
 
 ATPSPlayerController::ATPSPlayerController()

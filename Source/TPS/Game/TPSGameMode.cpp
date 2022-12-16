@@ -2,7 +2,7 @@
 
 #include "TPSGameMode.h"
 #include "TPSPlayerController.h"
-#include "TPSCharacter.h"
+#include <TPS/Character/TPSCharacter.h>
 #include "UObject/ConstructorHelpers.h"
 
 ATPSGameMode::ATPSGameMode()
@@ -11,7 +11,7 @@ ATPSGameMode::ATPSGameMode()
 	PlayerControllerClass = ATPSPlayerController::StaticClass();
 
 	// set default pawn class to our Blueprinted character
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Game/Blueprint/Character/BP_TopDownCharacter"));
+	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Game/Blueprint/Character/BP_Character"));
 	if (PlayerPawnBPClass.Class != nullptr)
 	{
 		DefaultPawnClass = PlayerPawnBPClass.Class;
