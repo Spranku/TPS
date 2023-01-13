@@ -35,6 +35,22 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
 public:
+	// Переменные спринта, ходьбы и прицеливания 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	bool SprintRunEnabled = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	bool WalkEnabled = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	bool AimEnabled = false;
+
+	// переменная таймера спринта
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	int SprintTime = 0;
+
+
+
 
 	// Добаввление переменной для ENUM
 	// По умолчанию она будет Run. Чтобы использовать ее в BP
@@ -61,6 +77,8 @@ public:
 	float AxisX = 0.0f;
 	float AxisY = 0.0f;
 
+	//
+
 	// Tick Function
 	// Здесь будет вызываться Add Movement Input
 	// Обязательно добавить её в основной Tick
@@ -81,7 +99,16 @@ public:
 
 	// ChangeMovementState будет принимать наш EMovementState
 	// для этого подключим Type.h файл.
+	//UFUNCTION(BlueprintCallable)
+	//void ChangeMovementState(EMovementState NewMovementState);
+
 	UFUNCTION(BlueprintCallable)
-	void ChangeMovementState(EMovementState NewMovementState);
+    void ChangeMovementState();
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	bool ToggleMouseInput = true;
+
+	
+
 };
 

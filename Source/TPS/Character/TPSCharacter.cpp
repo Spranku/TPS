@@ -53,6 +53,7 @@ void ATPSCharacter::Tick(float DeltaSeconds)
 
 	// Вызов функции с параметром DeltaSeconds (Tick)
 	MovementTick(DeltaSeconds);
+	
 }
 
 void ATPSCharacter::SetupPlayerInputComponent(UInputComponent* NewInputComponent)
@@ -92,8 +93,8 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 	// GetWorld и нулевой индекс контроллера
 	APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	// проверка
-	// Теперь у переменной можно вызвать функция GetHitResult
-	if (myController)
+	// Теперь у переменной можно вызвать функцию GetHitResult
+	if (myController && ToggleMouseInput)
 	{
 		// Эта функция принимает значение ETraceTypeQuery
 		// По сути это трейс каналы, которые в С++ выглядят так:
@@ -103,7 +104,7 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 		// ...
 		// Все трейсы, которые мы добавили вручную, начинаются с 6го!
 		// Поэтому выбираем шестой канал. Это и есть LanscapeCursor
-		//
+		// 
 		// Третий аргумент HitResult возвращает значение, поэтому 
 		// нужно заранее объявить переменную этого типа и передать 
 		// её в качестве аргумента
@@ -111,7 +112,6 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 		FHitResult ResultHit;
 		myController->GetHitResultUnderCursorByChannel(ETraceTypeQuery::TraceTypeQuery6, false, ResultHit);
 		
-
 		// Далее чтобы прописать FindLookAtRotation, нужно подключить 
 		// библиотеку <Kismet/KismetMathLibrary.h>. 
 		// Оболочка Kismet для того, чтобы работать с ней в Blueprints
@@ -136,6 +136,7 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 		float FindRotatorResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
 		SetActorRotation(FQuat(FRotator(0.0f, FindRotatorResultYaw, 0.0f)));
 	}
+	
 }
 
 // Функция, позволяющая менять скорость персонажа
@@ -155,11 +156,17 @@ void ATPSCharacter::CharacterUpdate()
 	case EMovementState::Aim_State:
 		ResSpeed = MovementInfo.AimSpeed;
 		break;
+	case EMovementState::AimWalk_State:
+		ResSpeed = MovementInfo.AimWalkSpeed;
+		break;
 	case EMovementState::Walk_State:
 		ResSpeed = MovementInfo.WalkSpeed;
 		break;
 	case EMovementState::Run_State:
 		ResSpeed = MovementInfo.RunSpeed;
+		break;
+	case EMovementState::SprintRun_State:
+		ResSpeed = MovementInfo.SprintRunSpeed;
 		break;
 	default:
 		break;
@@ -171,13 +178,64 @@ void ATPSCharacter::CharacterUpdate()
 	GetCharacterMovement()->MaxWalkSpeed = ResSpeed;
 }
 
-void ATPSCharacter::ChangeMovementState(EMovementState NewMovementState)
-{
-	// В тело добавим условие:
-	// Когда функция вызывается, то переменна принимает новое значение
-	MovementState = NewMovementState;
+//void ATPSCharacter::ChangeMovementState(EMovementState NewMovementState)
+//{
+//	// В тело добавим условие:
+//	// Когда функция вызывается, то переменна принимает новое значение
+//	MovementState = NewMovementState;
+//
+//	// Здесь будет вызываться функция CharacterUpdate
+//	CharacterUpdate();
+//}
 
-	// Здесь будет вызываться функция CharacterUpdate
+void ATPSCharacter::ChangeMovementState()
+{
+	//APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+
+	if (!WalkEnabled && !SprintRunEnabled && !AimEnabled)
+	{
+		// Включение поворота мыши после спринта
+		ToggleMouseInput = true;
+		MovementState = EMovementState::Run_State;
+		
+	}
+
+	else
+	{
+		if (SprintRunEnabled )//&& AxisX) // Вместо AxisX мне нужно подставить координаты курсора
+		{
+			// Отключение поворота мыши
+			ToggleMouseInput = false;
+			WalkEnabled = false;
+			AimEnabled = false;
+			MovementState = EMovementState::SprintRun_State;
+		}
+		
+		if (WalkEnabled && !SprintRunEnabled && AimEnabled)
+		{
+			MovementState = EMovementState::AimWalk_State;
+		}
+
+		else
+		{
+			if (WalkEnabled && !SprintRunEnabled && !AimEnabled)
+			{
+				MovementState = EMovementState::Walk_State;
+			}
+			else
+			{
+				if (!WalkEnabled && !SprintRunEnabled && AimEnabled)
+				{
+					MovementState = EMovementState::Aim_State;
+				}
+			}
+		}
+	}
 	CharacterUpdate();
 }
+
+
+
+
+
 

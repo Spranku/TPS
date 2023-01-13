@@ -20,8 +20,10 @@ UENUM(BlueprintType)
 enum class EMovementState : uint8
 {
 	Aim_State UMETA(DisplayName = "Aim State"),
+	AimWalk_State UMETA(DisplayeName = "Aim Walk State"),
 	Walk_State UMETA(DisplayeName = "Walk State"),
-	Run_State UMETA(DisplayeName = "Run State")
+	Run_State UMETA(DisplayeName = "Run State"),
+	SprintRun_State UMETA(DisplayName = "Sprint Run Speed")
 };
 
 // „тобы всЄ было структурировано, добавим структуру
@@ -34,7 +36,7 @@ enum class EMovementState : uint8
 // RunSpeed (скорость бега)
 // “ак же нужно добавить Unreal`овский макрос
 // UPROPERTY(EditAnywhere, BlueprintReadWrite)
-// Ёта струкрура будет виидна в BP, ей можно
+// Ёта струкрура будет виидна в BP, еЄ можно
 // читать и измен€ть.
 // 
 USTRUCT(BlueprintType) 
@@ -45,9 +47,13 @@ struct FCharacterSpeed
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Movement")
 	float AimSpeed = 300.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float WalkSpeed = 200.0f;
+	float AimWalkSpeed = 200.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float WalkSpeed = 100.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float RunSpeed = 600.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float SprintRunSpeed = 800.0f;
 };
 
 UCLASS()
