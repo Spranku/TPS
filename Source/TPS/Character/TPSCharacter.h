@@ -78,6 +78,8 @@ public:
 	float AxisY = 0.0f;
 
 	//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsStep = 0;
 
 	// Tick Function
 	// Здесь будет вызываться Add Movement Input

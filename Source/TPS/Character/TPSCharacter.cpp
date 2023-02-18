@@ -197,6 +197,7 @@ void ATPSCharacter::ChangeMovementState()
 		// ¬ключение поворота мыши после спринта
 		ToggleMouseInput = true;
 		MovementState = EMovementState::Run_State;
+		bIsStep = 1;
 		
 	}
 
