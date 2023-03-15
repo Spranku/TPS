@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Game/WorldItemDefault.h"
+#include <TPS/Game/WorldItemDefault.h>
 
 // Sets default values
 AWorldItemDefault::AWorldItemDefault()

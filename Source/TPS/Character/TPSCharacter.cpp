@@ -8,9 +8,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "HeadMountedDisplayFunctionLibrary.h" // for cursor?
 #include "Materials/Material.h"
 #include <Kismet/GameplayStatics.h> 
 #include <Kismet/KismetMathLibrary.h>
+#include "/My_Projects/TPS/Source/TPS/Game/TPSGameInstance.h"
 #include "Engine/World.h"
 
 ATPSCharacter::ATPSCharacter()
@@ -32,8 +34,10 @@ ATPSCharacter::ATPSCharacter()
 	// Create a camera boom...
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->SetUsingAbsoluteRotation(true); // Don't want arm to rotate when character does
+	//CameraBoom->SetUsingAbsoluteRotation(true); // Don't want arm to rotate when character does
+	CameraBoom->SetUsingAbsoluteRotation(true);
 	CameraBoom->TargetArmLength = 800.f;
+	//CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
 	CameraBoom->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
 	CameraBoom->bDoCollisionTest = false; // Don't want to pull camera in when it collides with level
 
@@ -41,6 +45,17 @@ ATPSCharacter::ATPSCharacter()
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+
+	 //Create a decal in the world to show the cursor's location
+	//CursorToWorld = CreateDefaultSubobject<UDecalComponent>("CursorToWorld");
+	//CursorToWorld->SetupAttachment(RootComponent);
+	//static ConstructorHelpers::FObjectFinder<UMaterial> DecalMaterialAsset(TEXT("Material'/Game/Blueprint/Character/M_Cursor_Decal.M_Cursor_Decal'"));
+	//if (DecalMaterialAsset.Succeeded())
+	//{
+	//	CursorToWorld->SetDecalMaterial(DecalMaterialAsset.Object);
+	//}
+	//CursorToWorld->DecalSize = FVector(16.0f, 32.0f, 32.0f);
+	//CursorToWorld->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f).Quaternion());
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -51,13 +66,68 @@ void ATPSCharacter::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
 
+	//if (CursorToWorld != nullptr) //Remove Epic Code 
+	//{
+	//	if (UHeadMountedDisplayFunctionLibrary::IsHeadMountedDisplayEnabled())
+	//	{
+	//		if (UWorld* World = GetWorld())
+	//		{
+	//			FHitResult HitResult;
+	//			FCollisionQueryParams Params(NAME_None, FCollisionQueryParams::GetUnknownStatId());
+	//			FVector StartLocation = TopDownCameraComponent->GetComponentLocation();
+	//			FVector EndLocation = TopDownCameraComponent->GetComponentRotation().Vector() * 2000.0f;
+	//			Params.AddIgnoredActor(this);
+	//			World->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, Params);
+	//			FQuat SurfaceRotation = HitResult.ImpactNormal.ToOrientationRotator().Quaternion();
+	//			CursorToWorld->SetWorldLocationAndRotation(HitResult.Location, SurfaceRotation);
+	//		}
+	//	}
+	//	else if ((APlayerController* PC = Cast<APlayerController>(GetController()))
+	//	{
+	//		FHitResult TraceHitResult;
+	//		PC->GetHitResultUnderCursor(ECC_Visibility, true, TraceHitResult);			
+	//		FVector CursorFV = TraceHitResult.ImpactNormal;
+	//		FRotator CursorR = CursorFV.Rotation();
+	//		CursorToWorld->SetWorldLocation(TraceHitResult.Location);
+	//		CursorToWorld->SetWorldRotation(CursorR);			
+	//	}
+	//}
+
+	if (CurrentCursor)
+	{
+		APlayerController* myPC = Cast<APlayerController>(GetController());
+		if (myPC)
+		{
+			FHitResult TraceHitResult;
+			myPC->GetHitResultUnderCursor(ECC_Visibility, true, TraceHitResult);
+			FVector CursorFV = TraceHitResult.ImpactNormal;
+			FRotator CursorR = CursorFV.Rotation();
+
+			CurrentCursor->SetWorldLocation(TraceHitResult.Location);
+			CurrentCursor->SetWorldRotation(CursorR);
+		}
+	}
+
+
 	// Вызов функции с параметром DeltaSeconds (Tick)
 	MovementTick(DeltaSeconds);
 	
 }
 
+void ATPSCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	InitWeapon(InitWeaponName);
+
+	if (CursorMaterial)
+	{
+		CurrentCursor = UGameplayStatics::SpawnDecalAtLocation(GetWorld(), CursorMaterial, CursorSize, FVector(0));
+	}
+}
+
 void ATPSCharacter::SetupPlayerInputComponent(UInputComponent* NewInputComponent)
-{ 
+{
 	Super::SetupPlayerInputComponent(NewInputComponent);
 
 	// InputComponent - это Axis,дальше текст с названием Input`a
@@ -66,6 +136,11 @@ void ATPSCharacter::SetupPlayerInputComponent(UInputComponent* NewInputComponent
 	// Так же для кнопки вправо-влево.
 	NewInputComponent->BindAxis(TEXT("MoveForward"), this, &ATPSCharacter::InputAxisX);
 	NewInputComponent->BindAxis(TEXT("MoveRight"), this, &ATPSCharacter::InputAxisY);
+
+	NewInputComponent->BindAction(TEXT("FireEvent"), EInputEvent::IE_Pressed, this, &ATPSCharacter::InputAttackPressed);
+	NewInputComponent->BindAction(TEXT("FireEvent"), EInputEvent::IE_Released, this, &ATPSCharacter::InputAttackReleased);
+	
+
 }
 
 void ATPSCharacter::InputAxisX(float Value)
@@ -76,6 +151,16 @@ void ATPSCharacter::InputAxisX(float Value)
 void ATPSCharacter::InputAxisY(float Value)
 {
 	AxisY = Value;
+}
+
+void ATPSCharacter::InputAttackPressed()
+{
+	AttackCharEvent(true);
+}
+
+void ATPSCharacter::InputAttackReleased()
+{
+	AttackCharEvent(false);
 }
 
 void ATPSCharacter::MovementTick(float DeltaTime)
@@ -91,11 +176,11 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 	// Создаем указатель типа Controller, из GameplayStatics
 	// берем контроллер игрока, передаем в качестве аргумента
 	// GetWorld и нулевой индекс контроллера
-	APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	// APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	// проверка
 	// Теперь у переменной можно вызвать функцию GetHitResult
-	if (myController && ToggleMouseInput)
-	{
+	// if (myController && ToggleMouseInput)
+	// {
 		// Эта функция принимает значение ETraceTypeQuery
 		// По сути это трейс каналы, которые в С++ выглядят так:
 		// TraceTypeQuery1 UMETA (Hidden)
@@ -109,8 +194,8 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 		// нужно заранее объявить переменную этого типа и передать 
 		// её в качестве аргумента
 
-		FHitResult ResultHit;
-		myController->GetHitResultUnderCursorByChannel(ETraceTypeQuery::TraceTypeQuery6, false, ResultHit);
+	// 	FHitResult ResultHit;
+	// 	myController->GetHitResultUnderCursorByChannel(ETraceTypeQuery::TraceTypeQuery6, false, ResultHit);
 		
 		// Далее чтобы прописать FindLookAtRotation, нужно подключить 
 		// библиотеку <Kismet/KismetMathLibrary.h>. 
@@ -133,10 +218,51 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 		// SetActorRotation(FQuat(FRotator(0.0f, UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw, 0.0f)));
 		// 
 		// Чтобы упростить такую запись, достаточно создать переменную с типом float и присвоить ей строку c Yaw:
-		float FindRotatorResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
-		SetActorRotation(FQuat(FRotator(0.0f, FindRotatorResultYaw, 0.0f)));
-	}
+	// 	float FindRotatorResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
+	// 	SetActorRotation(FQuat(FRotator(0.0f, FindRotatorResultYaw, 0.0f)));
+	// }
 	
+	// Ранее была допущена ошибка. В итоге поменяли функцию и изменили параметры.
+	// Раньше был TraceQuert6,сейчас ECC_GameTraceChannel1. Теперь курсор будет обрабатываться правильно
+
+	if (MovementState == EMovementState::SprintRun_State)
+	{
+		FVector myRotationVector = FVector(AxisX, AxisY, 0.0f);
+		FRotator myRotator = myRotationVector.ToOrientationRotator();
+		SetActorRotation((FQuat(myRotator)));
+	}
+	else
+	{
+		APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+		if (myController)
+		{
+			FHitResult ResultHit;
+			myController->GetHitResultUnderCursor(ECC_GameTraceChannel1, true, ResultHit);
+
+			float FindRotaterResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
+			SetActorRotation(FQuat(FRotator(0.0f, FindRotaterResultYaw, 0.0f)));
+		}
+	}
+
+}
+
+void ATPSCharacter::AttackCharEvent(bool bIsFiring)
+{
+	// Создаем локальную переменную
+	// Вызываем функцию, которая возвращает оружие, которое находится у нас в руках
+	AWeaponDefault* myWeapon = nullptr;
+	myWeapon = GetCurrentWeapon();
+	if (myWeapon)
+	{
+		// Устанавливаем тригер у этого оружия,что оно находится в состоянии стрельбы либо не стрельбы
+		// (зажали либо расжали курок)
+		// 
+		//ToDo Check melee or range
+		myWeapon->SetWeaponStateFire(bIsFiring);
+	}
+	else
+		UE_LOG(LogTemp, Warning, TEXT("ATPSCharacter::AttackCharEvent - CurrentWeapon -NULL"));
+	// Иначе CurrentWeapon -NULL
 }
 
 // Функция, позволяющая менять скорость персонажа
@@ -197,8 +323,6 @@ void ATPSCharacter::ChangeMovementState()
 		// Включение поворота мыши после спринта
 		ToggleMouseInput = true;
 		MovementState = EMovementState::Run_State;
-		bIsStep = 1;
-		
 	}
 
 	else
@@ -233,6 +357,80 @@ void ATPSCharacter::ChangeMovementState()
 		}
 	}
 	CharacterUpdate();
+	//Weapon state update
+	AWeaponDefault* myWeapon = GetCurrentWeapon();
+	if (myWeapon)
+	{
+		myWeapon->UpdateStateWeapon(MovementState);
+	}
+}
+
+// Функция, чтобы нельзя было получать доступ напрямую из BP к этой переменной
+AWeaponDefault* ATPSCharacter::GetCurrentWeapon()
+{
+	return CurrentWeapon;
+}
+
+// Эта функция теперь будет принимать ID Оружия
+void ATPSCharacter::InitWeapon(FName IdWeaponName)
+{
+	// Нужно взять гейм инстанс и сделать каст на него
+	// Когда будет вызываться эта ф-я, будет давать наш BP_GameInstance 
+	UTPSGameInstance* myGI = Cast<UTPSGameInstance>(GetGameInstance());
+	FWeaponInfo myWeaponInfo;
+	if (myGI)
+	{
+		// Если это прошло удачно, то мы вызываем у гейм инстанса
+	    // функцию GetWeaponInfoByName(ID Weapon) в виде имени
+		// Далее получаем структуру FWeaponInfo и эта структура получается
+		// на выходе этой функции
+		//
+		// Если ф-я GeTWeaponInfoByName возвращает правду, то структура MyWeaponInfo у нас есть
+		if (myGI->GetWeaponInfoByName(IdWeaponName, myWeaponInfo))
+		{
+			// Проверяем, что переменная не пустая
+			// тогда мы попытаемся что-то заспавнить.
+			if ((myWeaponInfo.WeaponClass))
+			{
+				// Готовим переменные для спавна, которые будут использованы ниже в спавн акторе
+				FVector SpawnLocation = FVector(0);
+				FRotator SpawnRotation = FRotator(0);
+
+				// Готовим спавн параметры, которые говорят о том,что мы должны заспавнить объект 
+				// игнорируя конфликты с другими коллизиями 
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				SpawnParams.Owner = GetOwner();           // устанавливаем наш
+				SpawnParams.Instigator = GetInstigator(); // TPSCharacter
+
+				// Далее идет функция GetWold()->SpawnActor, который принимает параметры
+				// UCLASS,location,rotation,SpawnParams и на выходе у нас получается AActor
+				// Далее (если справа налево) мы пытаемся этот AActor закастить на наш новый класс AWeaponDefault
+				// Если каст проходит успешно, он записывается в переменную myWeapon,которая создана здесь локально 
+				AWeaponDefault* myWeapon = Cast<AWeaponDefault>(GetWorld()->SpawnActor(myWeaponInfo.WeaponClass, &SpawnLocation, &SpawnRotation, SpawnParams));
+				if (myWeapon)
+				{
+					// После проверки, что переменная создалась, мы аттачим её к нашему мешу 
+					// Задаём правила спавна и указываем название сокета, куда нужно заспавнить
+					//
+					FAttachmentTransformRules Rule(EAttachmentRule::SnapToTarget, false);
+					myWeapon->AttachToComponent(GetMesh(), Rule, FName("WeaponSocketRightHand"));
+					// После этого записываем в переменную оружие, которым владеет наш персонаж
+					CurrentWeapon = myWeapon;
+
+					// Структура myWeaponInfo инициализирует оружие
+					//myWeapon->WeaponInit(myWeaponInfo);
+					myWeapon->WeaponSetting = myWeaponInfo;
+					myWeapon->UpdateStateWeapon(MovementState);
+				}
+			}
+		}
+	}
+}
+
+UDecalComponent* ATPSCharacter::GetCursorToWorld()
+{
+	return CurrentCursor;
 }
 
 

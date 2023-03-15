@@ -29,17 +29,22 @@ public:
 protected:
 	/** True if the controlled character should navigate to the mouse cursor. */
 	uint32 bMoveToMouseCursor : 1;
+	 
 
 	// Begin PlayerController interface
 	virtual void PlayerTick(float DeltaTime) override;
 	virtual void SetupInputComponent() override;
 	// End PlayerController interface
 
+    void MoveToMouseCursor() ;
+	void MoveToTouchLocation(const ETouchIndex::Type FingerIndex, const FVector Location);
+	void SetNewMoveDestination(const FVector DestLocation);
+
 	/** Input handlers for SetDestination action. */
 	void OnSetDestinationPressed();
 	void OnSetDestinationReleased();
-	void OnTouchPressed(const ETouchIndex::Type FingerIndex, const FVector Location);
-	void OnTouchReleased(const ETouchIndex::Type FingerIndex, const FVector Location);
+	// void OnTouchPressed(const ETouchIndex::Type FingerIndex, const FVector Location);
+	// void OnTouchReleased(const ETouchIndex::Type FingerIndex, const FVector Location);
 
 private:
 	bool bInputPressed; // Input is bring pressed

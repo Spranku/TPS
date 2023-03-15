@@ -17,10 +17,11 @@ ATPSGameMode::ATPSGameMode()
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
 
-	// set default controller to our Blueprinted controller
-	static ConstructorHelpers::FClassFinder<APlayerController> PlayerControllerBPClass(TEXT("/Game/Blueprint/Character/BP_TopDownPlayerController"));
-	if(PlayerControllerBPClass.Class != NULL)
-	{
-		PlayerControllerClass = PlayerControllerBPClass.Class;
-	}
+	//set default controller to our Blueprinted controller
+	//static ConstructorHelpers::FClassFinder<APlayerController> PlayerControllerBPClass(TEXT("/Game/Blueprint/Character/BP_PlayerController"));
+	//if(PlayerControllerBPClass.Class != NULL)
+	//{
+	//	PlayerControllerClass = PlayerControllerBPClass.Class;
+		//Game/Blueprint/Character/BP_TopDownPlayerController
+	//}
 }
