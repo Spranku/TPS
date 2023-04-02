@@ -70,7 +70,21 @@ struct FProjectileInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
 		float ProjectileLifeTime = 30.0f; // Жизнь пули
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
-		float IninSpeed = 2000.0f;       // Скорость пули
+		float ProjcetileInitSpeed = 2000.0f;       // Скорость пули
+
+	// TMap - массив, в котором есть контейнер и ключ к нему(value)
+	// Далее нужна обёртка TEnumAsByte - шаблон, который позволяет обернуть SurfaceType
+	// затем EPhysicalSurface - это тип поверхности (которых порядка 64 штук)
+	// По EPhysicalSurface нужен UMaterialInterface, назовём это HitDecals
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+		TMap<TEnumAsByte<EPhysicalSurface>, UMaterialInterface*> HitDecals;
+	// Так же со звуком
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+		USoundBase* HitSound = nullptr;
+	// И для эффекта попадания
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+		TMap<TEnumAsByte<EPhysicalSurface>, UParticleSystem*> HitFXs;
+	 
 
 	//Hit FX Actor?
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
@@ -86,13 +100,41 @@ struct FWeaponDispersion
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
-		float DispersionAimStart = 0.5f;	 // Разброс при начала прицеливания
+		float Aim_StateDispersionAimMax = 2.0f;	 // Разброс при начала прицеливания
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
-		float DispersionAimMAx = 1.0f;		 // МАХ разброс
+		float Aim_StateDispersionAimMin = 0.3f;		 // МАХ разброс
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
-		float DispersionAimMin = 0.1f;		 //  MIN разброс
+		float Aim_StateDispersionAimRecoil = 1.0f;		 //  MIN разброс
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
-		float DispersionAimShootCoef = 1.0f; // Коэф. при выстреле
+		float Aim_StateDispersionAimReduction = 0.3f; // Коэф. при выстреле
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+		float AimWalk_StateDispersionAimMax = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float AimWalk_StateDispersionAimMin = 0.1f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float AimWalk_StateDispersionAimRecoil = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float AimWalk_StateDispersionAimReduction = 0.4f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float Walk_StateDispersionAimMax = 5.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float Walk_StateDispersionAimMin = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float Walk_StateDispersionAimRecoil = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float Walk_StateDispersionAimReduction = 0.2f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float Run_StateDispersionAimMax = 10.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float Run_StateDispersionAimMin = 4.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float Run_StateDispersionAimRecoil = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dispersion")
+			float Run_StateDispersionAimReduction = 0.1f;
+
 
 };
 
@@ -112,6 +154,9 @@ struct FWeaponInfo : public FTableRowBase
 		float ReloadTime = 2.0f;							// Время перезарядки
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "State")
 		int32 MaxRound = 10;								// Количество патронов МАХ
+	// Для дробовика
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
+		int32 NumberProjectileByShot = 1;
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Dispersion")
 		FWeaponDispersion DispersionWeapon;					// Структура разброса оружия

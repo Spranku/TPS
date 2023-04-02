@@ -2,6 +2,9 @@
 
 
 #include "Game/ProjectileDefault.h"
+#include <Kismet/GameplayStatics.h> 
+#include <PhysicalMaterials/PhysicalMaterial.h>
+#include "/My_Projects/TPS/Source/TPS/FunctionLibrary/Type.h"
 
 // Sets default values
 AProjectileDefault::AProjectileDefault()
@@ -13,14 +16,6 @@ AProjectileDefault::AProjectileDefault()
 	BulletCollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("Collision Sphere"));
 
 	BulletCollisionSphere->SetSphereRadius(16.f);
-
-	// Описание оверлап евента 
-	// В зависимости Hit / Begin или Hit оверлап создается делегат,который отностится к ProjectileDefault
-	// и он вызывет функцию BulletCollision...
-	//
-	BulletCollisionSphere->OnComponentHit.AddDynamic(this, &AProjectileDefault::BulletCollisionSphereHit);
-	BulletCollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AProjectileDefault::BulletCollisionSphereBeginOverlap);
-	BulletCollisionSphere->OnComponentEndOverlap.AddDynamic(this, &AProjectileDefault::BulletCollisionSphereEndOverlap);
 
 	// Сфера должна возвращать материал, когда происходит Hit Event
 	BulletCollisionSphere->bReturnMaterialOnMove = true;//hit event return physMaterial
@@ -62,6 +57,13 @@ AProjectileDefault::AProjectileDefault()
 void AProjectileDefault::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Описание оверлап евента 
+	// В зависимости Hit / Begin или Hit оверлап создается делегат,который отностится к ProjectileDefault
+	// и он вызывет функцию BulletCollision...
+	BulletCollisionSphere->OnComponentHit.AddDynamic(this, &AProjectileDefault::BulletCollisionSphereHit);
+	BulletCollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AProjectileDefault::BulletCollisionSphereBeginOverlap);
+	BulletCollisionSphere->OnComponentEndOverlap.AddDynamic(this, &AProjectileDefault::BulletCollisionSphereEndOverlap);
 	
 }
 
@@ -72,14 +74,70 @@ void AProjectileDefault::Tick(float DeltaTime)
 
 }
 
+void AProjectileDefault::InitProjectile(FProjectileInfo InitParam)
+{
+	// Вызывается, когда инициализируется выстрел
+	// Устанавливает скорость и время жизни пули
+	BulletProjectileMovement->InitialSpeed = InitParam.ProjcetileInitSpeed;
+	this->SetLifeSpan(InitParam.ProjectileLifeTime);   
+
+	ProjectileSetting = InitParam;
+}
+
 void AProjectileDefault::BulletCollisionSphereHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	// Когда проходит какой-либо евент на хит,идет проверка на что попали
+	// есть ли  у него физ.материал
+	//  
+	//
+	//
+	if (OtherActor && Hit.PhysMaterial.IsValid())
+	{
+		// Берем тип материала с помощью ф-ции GetSurfaceType
+		EPhysicalSurface mySurfaceType = UGameplayStatics::GetSurfaceType(Hit);
+
+		// Проверяем содержит ли TMap такой SurfaceType(тип поверхности)
+		if (ProjectileSetting.HitDecals.Contains(mySurfaceType))
+		{
+			// Если содержит,то пытаемся взять материал, который содержит ключ  TMap по mySurfaceType
+			UMaterialInterface* myMaterial = ProjectileSetting.HitDecals[mySurfaceType];
+			// Далее проверка на материал: есть ли физический объект того, во что мы попали
+			if (myMaterial && OtherComp)
+			{
+				// Спавн декали. В аргументы передается: декаль, размер декали,
+				// то к чему аттачим, без костей(noname), ротацию (разворачиваем по нормали)
+				// В конце условие аттача:: и секунды (сколько живет декаль)
+				UGameplayStatics::SpawnDecalAttached(myMaterial, FVector(20.0f), OtherComp, NAME_None, Hit.ImpactPoint, Hit.ImpactNormal.Rotation(), EAttachLocation::KeepWorldPosition, 10.0f);
+			}
+		}
+		// То же делаем с HitFXs
+		// Проверяем mySurfaceType
+		if (ProjectileSetting.HitFXs.Contains(mySurfaceType))
+		{
+			UParticleSystem* myParticle = ProjectileSetting.HitFXs[mySurfaceType];
+			// Берем mySurfaceType
+			if (mySurfaceType)
+			{
+				// Спавним, как обычные частицы
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), myParticle, FTransform(Hit.ImpactNormal.Rotation(), Hit.ImpactPoint, FVector(1.0f)));
+			}
+		}	
+	}
+	// PlaySound, если есть какой-то звук
+	if (ProjectileSetting.HitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ProjectileSetting.HitSound, Hit.ImpactPoint);
+	}
+	// добавлено ради эксперимента. 
+	UGameplayStatics::ApplyDamage(OtherActor, ProjectileSetting.ProjectileDamage, GetInstigatorController(), this, NULL);
 }
 
 void AProjectileDefault::BulletCollisionSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	// 
 }
 
 void AProjectileDefault::BulletCollisionSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
+	// 
 }

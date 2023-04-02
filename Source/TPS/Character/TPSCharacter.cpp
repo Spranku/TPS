@@ -139,6 +139,8 @@ void ATPSCharacter::SetupPlayerInputComponent(UInputComponent* NewInputComponent
 
 	NewInputComponent->BindAction(TEXT("FireEvent"), EInputEvent::IE_Pressed, this, &ATPSCharacter::InputAttackPressed);
 	NewInputComponent->BindAction(TEXT("FireEvent"), EInputEvent::IE_Released, this, &ATPSCharacter::InputAttackReleased);
+
+	NewInputComponent->BindAction(TEXT("ReloadEvent"), EInputEvent::IE_Released, this, &ATPSCharacter::TryReloadEvent);
 	
 
 }
@@ -167,7 +169,6 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 {
 	// Up-Down movement
 	AddMovementInput(FVector(1.0, 0.0, 0.0) , AxisX);
-
 	// Left-Rigth movement
 	AddMovementInput(FVector(0.0, 1.0, 0.0) , AxisY);
 
@@ -241,8 +242,52 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 
 			float FindRotaterResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
 			SetActorRotation(FQuat(FRotator(0.0f, FindRotaterResultYaw, 0.0f)));
+
+			
+			//
+			if(CurrentWeapon)
+			{
+					FVector Displacement = FVector(0);
+					switch (MovementState)
+					{
+					case EMovementState::Aim_State:
+						// ѕрицелились - оружие сводитс€. —трел€ем - увеличиваетс€ на 1
+						// и сразу уходит вниз,по тихоньку пыта€сь уменьшатьс€
+						Displacement = FVector(0.0f, 0.0f, 160.0f);
+						CurrentWeapon->ShouldReduseDespersion = true;
+						break;
+					case EMovementState::AimWalk_State:
+						CurrentWeapon->ShouldReduseDespersion = true;
+						Displacement = FVector(0.0f, 0.0f, 160.0f);
+						break;
+					case EMovementState::Walk_State:
+						Displacement = FVector(0.0f, 0.0f, 120.0f);
+						CurrentWeapon->ShouldReduseDespersion = false;
+						break;
+					case EMovementState::Run_State:
+						Displacement = FVector(0.0f, 0.0f, 120.0f);
+						CurrentWeapon->ShouldReduseDespersion = false;
+						break;
+					case EMovementState::SprintRun_State:
+						break;
+					default:
+						break;
+					}
+					// ” нас есть результат попадани€ курсора на поверхность (ResultHit)
+					// ¬ оружие посылаем этот результат
+					CurrentWeapon->ShootEndLocation = ResultHit.Location + Displacement;
+			}
 		}
 	}
+	// ≈сли у персонажа есть оружие и если скорость персонажа = 0,
+	// то оружие уменьшает сведение разброса
+	// ≈сли персонаж бежит, то сведение увеличиваетс€
+	// if (CurrentWeapon)
+	//	if (FMath::IsNearlyZero(GetVelocity().Size(), 0.5f))
+	//		CurrentWeapon->ShouldReduseDespersion = true;
+	//	else
+	//		CurrentWeapon->ShouldReduseDespersion = false;
+	// ¬ итоге вынесли эту логику наверх
 
 }
 
@@ -321,7 +366,7 @@ void ATPSCharacter::ChangeMovementState()
 	if (!WalkEnabled && !SprintRunEnabled && !AimEnabled)
 	{
 		// ¬ключение поворота мыши после спринта
-		ToggleMouseInput = true;
+		//ToggleMouseInput = true;
 		MovementState = EMovementState::Run_State;
 	}
 
@@ -330,7 +375,7 @@ void ATPSCharacter::ChangeMovementState()
 		if (SprintRunEnabled )//&& AxisX) // ¬место AxisX мне нужно подставить координаты курсора
 		{
 			// ќтключение поворота мыши
-			ToggleMouseInput = false;
+			//ToggleMouseInput = false;
 			WalkEnabled = false;
 			AimEnabled = false;
 			MovementState = EMovementState::SprintRun_State;
@@ -421,11 +466,61 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName)
 					// —труктура myWeaponInfo инициализирует оружие
 					//myWeapon->WeaponInit(myWeaponInfo);
 					myWeapon->WeaponSetting = myWeaponInfo;
+					//  огда оружие инициализируетс€, нужно в Round записать максимальное кол-во патронов
+					myWeapon->WeaponInfo.Round = myWeaponInfo.MaxRound;
 					myWeapon->UpdateStateWeapon(MovementState);
+
+					//  огда иниц. оружие, нужно добавить делегаты
+					// —перва получаем делегаты на начало и конец  перезар€дки
+					// ƒалее вызываем AddDynamic,в аргумент даем ссылку на себ€,
+					// тоесть кто случатель телегата? Character. ƒалее тот, кто услышал
+					// вызывает функцию. ¬ это случае WeaponReloadStart или End
+					myWeapon->OnWeaponReloadStart.AddDynamic(this, &ATPSCharacter::WeaponReloadStart);
+					myWeapon->OnWeaponReloadEnd.AddDynamic(this, &ATPSCharacter::WeaponReloadEnd);
 				}
 			}
 		}
 	}
+}
+
+void ATPSCharacter::TryReloadEvent()
+{
+
+	// —перва провер€ем что у персонажа есть текущее оружие
+	if (CurrentWeapon)
+	{
+		// ≈сли текущее кол-во патронов больше или равно максимальному количеству,
+		// то вызываем ф-ю инициализации перезар€дки
+		if (CurrentWeapon->GetWeaponRound() <= CurrentWeapon->WeaponSetting.MaxRound)
+		{
+			CurrentWeapon->InitReload();
+		}
+	}
+
+}
+
+void ATPSCharacter::WeaponReloadStart(UAnimMontage* Anim)
+{
+	//
+	WeaponReloadStart_BP(Anim);
+}
+
+void ATPSCharacter::WeaponReloadEnd()
+{
+	//
+	WeaponReloadEnd_BP();
+}
+
+void ATPSCharacter::WeaponReloadStart_BP_Implementation(UAnimMontage* Anim)
+{
+	//
+	
+}
+
+void ATPSCharacter::WeaponReloadEnd_BP_Implementation()
+{
+	//
+	
 }
 
 UDecalComponent* ATPSCharacter::GetCursorToWorld()

@@ -147,6 +147,19 @@ public:
 	// Функция, которая спавнит оружие
 	UFUNCTION(BlueprintCallable)
 	void InitWeapon(FName IdWeapon);
+	UFUNCTION(BlueprintCallable)
+	void TryReloadEvent();
+
+	// Функции делегатов перезарядки
+	UFUNCTION()
+		void WeaponReloadStart(UAnimMontage* Anim);
+	UFUNCTION()
+		void WeaponReloadEnd();
+	// Делегаты, которые видны в BP
+	UFUNCTION(BlueprintNativeEvent)
+		void WeaponReloadStart_BP(UAnimMontage* Anim);
+	UFUNCTION(BlueprintNativeEvent)
+		void WeaponReloadEnd_BP();
 
 	UFUNCTION(BlueprintCallable)
 	UDecalComponent* GetCursorToWorld();
