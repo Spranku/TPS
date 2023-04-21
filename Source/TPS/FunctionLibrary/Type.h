@@ -63,7 +63,17 @@ struct FProjectileInfo
 	GENERATED_BODY()
 	// Здесь описан класс пули и её урон
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
-	TSubclassOf<class AProjectileDefault> Projectile = nullptr;
+	TSubclassOf<class AProjectileDefault> Projectile = nullptr;	
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		class UStaticMesh* ProjectileStaticMesh = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		FTransform ProjectileStaticMeshOffset = FTransform();
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		class UParticleSystem* ProjectileTrialFX = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		FTransform ProjectileTrialFxOffset = FTransform();
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
 	float ProjectileDamage = 20.0f;
 
@@ -84,13 +94,28 @@ struct FProjectileInfo
 	// И для эффекта попадания
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
 		TMap<TEnumAsByte<EPhysicalSurface>, UParticleSystem*> HitFXs;
+
+	//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		UParticleSystem* ExploseFX = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		USoundBase* ExploseSound = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+		float ProjectileMaxRadiusDamage = 200.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		float ProjectileMinRadiusDamage = 200.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		float ExploseMaxDamage = 40.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+		float ExploseFalloffCoef = 1.0f;
+
 	 
 
 	//Hit FX Actor?
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
 		bool bIsLikeBomp = false;        // Для будущих взрывов
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
-		float ProjectileMaxRadiusDamage = 200.0f;
+	
 
 };
 
@@ -184,7 +209,7 @@ struct FWeaponInfo : public FTableRowBase
 		UAnimMontage* AnimCharFire = nullptr;				// Переменные анимаций
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Anim")
 		UAnimMontage* AnimCharReload = nullptr;
-
+	
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Mesh")
 		UStaticMesh* MagazineDrop = nullptr;                // Падающий магазин
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Mesh")
@@ -208,8 +233,32 @@ struct FAddicionalWeaponInfo
 
 };
 
+USTRUCT(BlueprintType)
+struct FAnimationWeaponInfo
+{
+	GENERATED_BODY()
+
+		// Переменные анимаций
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
+		UAnimMontage* AnimCharFire = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
+		UAnimMontage* AnimCharFireAim = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
+		UAnimMontage* AnimCharReload = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
+		UAnimMontage* AnimCharReloadAim = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
+		UAnimMontage* AnimWeaponReload = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
+		UAnimMontage* AnimWeaponReloadAim = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
+		UAnimMontage* Fire = nullptr;
+};
+
 UCLASS()
 class TPS_API UType : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
+		
 };

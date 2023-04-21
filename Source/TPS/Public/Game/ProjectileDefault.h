@@ -22,15 +22,15 @@ public:
 	AProjectileDefault();
 
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = Components)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, /*meta = (AllowPrivateAccess = "true")*/ Category = Components)
 		class UStaticMeshComponent* BulletMesh = nullptr;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = Components)
-		class USphereComponent* BulletCollisionSphere = nullptr;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = Components)
-		class UProjectileMovementComponent* BulletProjectileMovement = nullptr;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = Components)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, /*meta = (AllowPrivateAccess = "true")*/ Category = Components)
 		class UParticleSystemComponent* BulletFX = nullptr;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = Components)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, /*meta = (AllowPrivateAccess = "true")*/ Category = Components)
+		class USphereComponent* BulletCollisionSphere = nullptr;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, /*meta = (AllowPrivateAccess = "true")*/ Category = Components)
+		class UProjectileMovementComponent* BulletProjectileMovement = nullptr;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, /*meta = (AllowPrivateAccess = "true")*/ Category = Components)
 		class UAudioComponent* BulletSound = nullptr;
 	
 	 FProjectileInfo ProjectileSetting;
@@ -49,7 +49,7 @@ public:
 	// Функции, которые отвечают за реакции на пулю. 
 	//Входные данные описаны Epic`ами. Полностью совпадают с параметрами нода Event Begin Overlap 
 	UFUNCTION()
-	void BulletCollisionSphereHit(class UPrimitiveComponent* HitComp, 
+	virtual void BulletCollisionSphereHit(class UPrimitiveComponent* HitComp, 
 		AActor* OtherActor, 
 		UPrimitiveComponent* OtherComp, 
 		FVector NormalImpulse, 
@@ -66,6 +66,8 @@ public:
 		AActor* OtherActor, 
 		UPrimitiveComponent* OtherComp, 
 		int32 OtherBodyIndex);
+	UFUNCTION()
+		virtual void ImpactProjectile();
 
 
 };

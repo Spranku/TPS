@@ -48,7 +48,7 @@ AProjectileDefault::AProjectileDefault()
 	BulletSound->SetupAttachment(RootComponent);
 
 	// ƒолжен ли он разворачиватьс€ в сторону ускорени€ (velocity)
-	// ƒолжен ли он быть шариком
+	// ƒолжен ли он отскакивать от стен
 	BulletProjectileMovement->bRotationFollowsVelocity = true;
 	BulletProjectileMovement->bShouldBounce = true;
 }
@@ -79,7 +79,29 @@ void AProjectileDefault::InitProjectile(FProjectileInfo InitParam)
 	// ¬ызываетс€, когда инициализируетс€ выстрел
 	// ”станавливает скорость и врем€ жизни пули
 	BulletProjectileMovement->InitialSpeed = InitParam.ProjcetileInitSpeed;
+	//  ¬ыставл€ем сразу максимальную скорость, чтобы была возможность сделать гранаты
+	BulletProjectileMovement->MaxSpeed = InitParam.ProjcetileInitSpeed;
 	this->SetLifeSpan(InitParam.ProjectileLifeTime);   
+
+	// Ёта часть кода провер€ет используетс€ ли статик меш или FX
+	// и если что удал€ет не нужные компоненты, если они не используютс€00
+	if (InitParam.ProjectileStaticMesh)
+	{
+		BulletMesh->SetStaticMesh(InitParam.ProjectileStaticMesh);
+		BulletMesh->SetRelativeTransform(InitParam.ProjectileStaticMeshOffset);
+	}
+	else
+	{
+		BulletMesh->DestroyComponent();
+	}
+
+	if (InitParam.ProjectileTrialFX)
+	{
+		BulletFX->SetTemplate(InitParam.ProjectileTrialFX);
+		BulletFX->SetRelativeTransform(InitParam.ProjectileTrialFxOffset);
+	}
+	else
+		BulletFX->DestroyComponent();
 
 	ProjectileSetting = InitParam;
 }
@@ -130,6 +152,7 @@ void AProjectileDefault::BulletCollisionSphereHit(UPrimitiveComponent* HitComp, 
 	}
 	// добавлено ради эксперимента. 
 	UGameplayStatics::ApplyDamage(OtherActor, ProjectileSetting.ProjectileDamage, GetInstigatorController(), this, NULL);
+	ImpactProjectile();
 }
 
 void AProjectileDefault::BulletCollisionSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -140,4 +163,10 @@ void AProjectileDefault::BulletCollisionSphereBeginOverlap(UPrimitiveComponent* 
 void AProjectileDefault::BulletCollisionSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	// 
+}
+
+void AProjectileDefault::ImpactProjectile()
+{
+	//  огда ключено - пули не рикошет€т
+	//this->Destroy();
 }

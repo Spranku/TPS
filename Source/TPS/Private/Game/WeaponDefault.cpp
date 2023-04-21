@@ -4,6 +4,7 @@
 #include "Game/WeaponDefault.h"
 #include <Kismet/GameplayStatics.h> 
 
+
 // Sets default values
 AWeaponDefault::AWeaponDefault()
 {
@@ -197,7 +198,8 @@ void AWeaponDefault::Fire()
 	// Эффект оружия
 	// То же самое, только берем данные из таблицы EffectFireWeapon
 	// И Transform нужно передать. Передать его нужно от дула, откуда вылетают пули
-	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), WeaponSetting.EffectFireWeapon, ShootLocation->GetComponentTransform());
+	//UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), WeaponSetting.EffectFireWeapon, ShootLocation->GetComponentTransform());
+	UGameplayStatics::SpawnEmitterAttached(WeaponSetting.EffectFireWeapon, ShootLocation);
 	// Ф-я для дробовика
 	// Берем количество пуль
 	int8 NumberProjectile = GetNumberProjectileByShot();
@@ -206,8 +208,8 @@ void AWeaponDefault::Fire()
 	{
 		// Проверяем есть ли у оружия shootLocation (arrow comp)
 
-		// Далее берем место, где должна заспавниться пуля у арро компонента
-		// Берем так же ротацию
+		// Далее берем место, где должна заспавниться пуля у арров компонента					!!!
+		// Берем так же ротацию																	!!!
 		FVector SpawnLocation = ShootLocation->GetComponentLocation();
 		FRotator SpawnRotation = ShootLocation->GetComponentRotation();
 		// Инициируем ProjectileInfo, берем инфо из функции,которая в свою очередь берет инфо
@@ -215,6 +217,7 @@ void AWeaponDefault::Fire()
 		FProjectileInfo ProjectileInfo;
 		ProjectileInfo = GetProjectile();
 		FVector EndLocation;
+
 		// В этом цикле для каждой следующей пули, которая будет спавниться создается вектор
 		// Внутри цикла будет вся логика спавна и разворота пули
 
@@ -222,48 +225,151 @@ void AWeaponDefault::Fire()
 		{
 			EndLocation = GetFireEndLocation();
 
-			// Нужно определить, в какую сторону поворачивать пулю (её ротацию)
-		// Для этого получаем Direction(направление), берем местоположение крусора,
-		// отнимаем его от вектора где находится Arrow Component
-		// GПосле этого вектор обязательно нормализовать
-		//
-		////////////////////////////////////////////////////////////////////////////////////////////////////???
-		///////////////////////////////////////////////////////////////////////////////////////////////////???
-
-			FVector Dir = /*ShootEndLocation*/ GetFireEndLocation() - SpawnLocation;
-			Dir.Normalize();
-			// Далее строим матрицу, даём ей нормализованный вектор,даём векторы по плоскости Y,Z 
-			// и нулевой вектор (это просто 0,0,0)
-			// После получения матрицы, можно с помощью функции Rotator() получить ротацию для пули
-			FMatrix myMatrix(Dir, FVector(0, 1, 0), FVector(0, 0, 1), FVector::ZeroVector);
-			SpawnRotation = myMatrix.Rotator();
-
 			// Далее идёт структура. Проверяем в ней наличие класса projectile 
 			if (ProjectileInfo.Projectile)
 			{
+				//Projectile Init ballistic fire	
+				// Нужно определить, в какую сторону поворачивать пулю (её ротацию)
+			    // Для этого получаем Direction(направление), берем местоположение крусора,
+				// отнимаем его от вектора где находится Arrow Component
+				// После этого вектор обязательно нормализовать
+				FVector Dir = /*ShootEndLocation*/ GetFireEndLocation() - SpawnLocation;
+				Dir.Normalize();
+				// Далее строим матрицу, даём ей нормализованный вектор,даём векторы по плоскости Y,Z 
+				// и нулевой вектор (это просто 0,0,0)
+				// После получения матрицы, можно с помощью функции Rotator() получить ротацию для пули
+				//
+				// В конспекте указано,что 0,1, и 0,0,1 - не верно,хотя и не влияет на работу
+				// Исправил на 000 и 000 соответсвенно
+				FMatrix myMatrix(Dir, FVector(0, 0, 0), FVector(0, 0, 0), FVector::ZeroVector);
+				SpawnRotation = myMatrix.Rotator();
+
 				//Projectile Init ballistic fire
 				// Если projectile есть, начинаем его спавнить
-
 				FActorSpawnParameters SpawnParams;
 				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 				SpawnParams.Owner = GetOwner();
 				SpawnParams.Instigator = GetInstigator();
 
 				AProjectileDefault* myProjectile = Cast<AProjectileDefault>(GetWorld()->SpawnActor(ProjectileInfo.Projectile, &SpawnLocation, &SpawnRotation, SpawnParams));
-				if (myProjectile && myProjectile != nullptr)
+				if (myProjectile /* && myProjectile != nullptr*/ )
 				{
 					//ToDo Init Projectile settings by id in table row(or keep in weapon table)
+					// 
 					// Добавляем условие, что пуля должна жить 20 секунд
-					myProjectile->InitialLifeSpan = 20.0f;
-
+					//myProjectile->InitialLifeSpan = 20.0f;
 					//Projectile->BulletProjectileMovement->InitialSpeed = 2500.0f;
-					myProjectile->InitProjectile(WeaponSetting.ProjectileSetting);
+
+					 myProjectile->InitProjectile(WeaponSetting.ProjectileSetting);
 				}
 			}
 			else
 			{
-				//ToDo Projectile null Init trace fire		
-				// Если пули нет, допишем логику стрельбы трейсами
+				// Если пули нет,исполняется логика стрельбы трейсами
+
+				FHitResult Hit;
+				TArray<AActor*> Actors;
+
+				UKismetSystemLibrary::LineTraceSingle(GetWorld(),
+					SpawnLocation,
+					EndLocation * WeaponSetting.DistanceTrace,
+					TraceTypeQuery4,
+					false,
+					Actors,
+					EDrawDebugTrace::ForDuration,
+					Hit,
+					true,
+					FLinearColor::Red,
+					FLinearColor::Green,
+					5.0f);
+
+				if (ShowDebug)
+				{
+					DrawDebugLine(GetWorld(),
+						SpawnLocation,
+						EndLocation + ShootLocation->GetForwardVector() * WeaponSetting.DistanceTrace,
+						FColor::Black,
+						false,
+						5.0f,
+						(uint8)'\000',
+						0.5f);
+				}
+
+				if (Hit.GetActor() && Hit.PhysMaterial.IsValid())
+				{
+					EPhysicalSurface mySurfaceType = UGameplayStatics::GetSurfaceType(Hit);
+
+					if (WeaponSetting.ProjectileSetting.HitDecals.Contains(mySurfaceType))
+					{
+						UMaterialInterface* myMaterial = WeaponSetting.ProjectileSetting.HitDecals[mySurfaceType];
+
+						if (myMaterial && Hit.GetComponent())
+						{
+							UGameplayStatics::SpawnDecalAttached(myMaterial,
+								FVector(20.0f),
+								Hit.GetComponent(),
+								NAME_None,
+								Hit.ImpactPoint,
+								Hit.ImpactNormal.Rotation(),
+								EAttachLocation::KeepWorldPosition,
+								5.0f);
+						}
+					}
+					if (WeaponSetting.ProjectileSetting.HitFXs.Contains(mySurfaceType))
+					{
+						UParticleSystem* myParticle = WeaponSetting.ProjectileSetting.HitFXs[mySurfaceType];
+						if (myParticle)
+						{
+							UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),
+								myParticle,
+								FTransform(Hit.ImpactNormal.Rotation(),
+								Hit.ImpactPoint,
+								FVector(1.0f)));
+						}
+					}
+
+					if (WeaponSetting.ProjectileSetting.HitSound)
+					{
+						UGameplayStatics::PlaySoundAtLocation(GetWorld(),
+							WeaponSetting.ProjectileSetting.HitSound,
+							Hit.ImpactNormal);
+					}
+
+					UGameplayStatics::ApplyDamage(Hit.GetActor(),
+						WeaponSetting.ProjectileSetting.ProjectileDamage,
+						GetInstigatorController(),
+						this,
+						NULL);
+				}
+
+
+
+
+				////////////////////////////////////////////////////////////////////////////////////////////////////
+				//MyTemplate
+
+				/*FRotator Rot;
+				FHitResult ResultHit;
+				FCollisionQueryParams TraceParams;
+				bool bIsHit;
+				bIsHit = GetWorld()->LineTraceSingleByChannel(
+						ResultHit,
+						SpawnLocation,
+						EndLocation,
+						ECC_Visibility,
+						TraceParams);
+
+				DrawDebugLine(GetWorld(), SpawnLocation, EndLocation, FColor::Red, false, 10.0f);
+				DrawDebugPoint(GetWorld(), ResultHit.ImpactPoint, 3.0f, FColor::Green, false, 10.0f);
+				
+				
+
+				if (bIsHit)
+				{
+					GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Trace Hit"));
+					
+				}*/
+				////////////////////////////////////////////////////////////////////////////////////////////////////
 			}
 		}
 	}
@@ -378,6 +484,7 @@ int32 AWeaponDefault::GetWeaponRound()
 void AWeaponDefault::InitReload()
 {
 	WeaponReloading = true;
+
 	// Когда инициализировался таймер, передаем значение
 	// из структуры: какое время нужно оружию, чтобы перезарядиться
 	ReloadTimer = WeaponSetting.ReloadTime; // (2 секунды)

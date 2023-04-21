@@ -71,6 +71,7 @@ public:
 		bool WeaponFiring = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReloadLogic")
 		bool WeaponReloading = false; // Флаг на перезарядку
+	
 
 	UFUNCTION(BlueprintCallable)
 	void SetWeaponStateFire(bool bIsFire);
@@ -105,6 +106,7 @@ public:
 	float ReloadTimer = 0.0f;
 
 	bool BlockFire = false;
+	
 	// Разброс
 	bool ShouldReduseDespersion = false;
 	float CurrentDispersion = 0.0f;
@@ -118,4 +120,5 @@ public:
 		bool  ShowDebug = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
 	    float SizeVectorToChangeShootDirectionLogic = 100.0f;;
+	
 };
