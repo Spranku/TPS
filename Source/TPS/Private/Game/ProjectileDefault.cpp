@@ -167,6 +167,6 @@ void AProjectileDefault::BulletCollisionSphereEndOverlap(UPrimitiveComponent* Ov
 
 void AProjectileDefault::ImpactProjectile()
 {
-	// Когда ключено - пули не рикошетят
+	// Когда включено - пули не рикошетят
 	//this->Destroy();
 }

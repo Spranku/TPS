@@ -13,6 +13,7 @@
 #include <Kismet/GameplayStatics.h> 
 #include <Kismet/KismetMathLibrary.h>
 #include "/My_Projects/TPS/Source/TPS/Game/TPSGameInstance.h"
+#include "/My_Projects/TPS/Source/TPS/Character/TPSInventoryComponent.h"
 #include "Engine/World.h"
 
 ATPSCharacter::ATPSCharacter()
@@ -56,6 +57,13 @@ ATPSCharacter::ATPSCharacter()
 	//}
 	//CursorToWorld->DecalSize = FVector(16.0f, 32.0f, 32.0f);
 	//CursorToWorld->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f).Quaternion());
+
+	InventoryComponent = CreateDefaultSubobject<UTPSInventoryComponent>(TEXT("InventoryComponent"));
+
+	if (InventoryComponent)
+	{
+		InventoryComponent->OnSwitchWeapon.AddDynamic(this, &ATPSCharacter::InitWeapon);
+	}
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -118,7 +126,9 @@ void ATPSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	InitWeapon(InitWeaponName);
+	// ????????????????????????????????????????????????????????????????????????????????
+	// ????????????????????????????????????????????????????????????????????????????????
+	// InitWeapon(InitWeaponName);
 
 	if (CursorMaterial)
 	{
@@ -142,7 +152,8 @@ void ATPSCharacter::SetupPlayerInputComponent(UInputComponent* NewInputComponent
 
 	NewInputComponent->BindAction(TEXT("ReloadEvent"), EInputEvent::IE_Released, this, &ATPSCharacter::TryReloadEvent);
 	
-
+	NewInputComponent->BindAction(TEXT("SwitchNextWeapon"), EInputEvent::IE_Pressed, this, &ATPSCharacter::TrySwitchNextWeapon);
+	NewInputComponent->BindAction(TEXT("SwitchPreviosWeapon"), EInputEvent::IE_Pressed, this, &ATPSCharacter::SwitchPreviosWeapon);
 }
 
 void ATPSCharacter::InputAxisX(float Value)
@@ -163,6 +174,61 @@ void ATPSCharacter::InputAttackPressed()
 void ATPSCharacter::InputAttackReleased()
 {
 	AttackCharEvent(false);
+}
+
+void ATPSCharacter::TrySwitchNextWeapon()
+{
+	// Когда пытаемся поменять текущее оружие на какое-то другое,проверяем есть ли хотя-бы 2 слота
+	// в персонаже. Если есть, то сохраняем локальную переменную в виде старого индекса
+	// 
+	//
+	if (InventoryComponent->WeaponSlots.Num() > 1)
+	{
+		int8 OldIndex = CurrentIndexWeapon;
+		FAdditionalWeaponInfo OldInfo;
+		if (CurrentWeapon)
+		{
+			// Берем текущее оружие
+			// загружаем инфу в локальную переменную (сколько патронов там было)
+			// Если оружие перезаряжалось, то делаем отмену перезарядки
+			OldInfo = CurrentWeapon->AdditionalWeaponInfo;
+			if (CurrentWeapon->WeaponReloading)
+				CurrentWeapon->CancelReload();
+		}
+		if (InventoryComponent)
+		{
+			// Убеждаемся, что есть InventoryComponent
+			// 
+			//
+			if(InventoryComponent->SwitchWeaponToIndex(CurrentIndexWeapon +1, OldIndex, OldInfo))
+			{ }
+		}
+	}
+
+}
+
+void ATPSCharacter::SwitchPreviosWeapon()
+{
+	//	То же самое,только индекс - 1
+	//
+	if (InventoryComponent->WeaponSlots.Num() > 1)
+	{
+		int8 OldIndex = CurrentIndexWeapon;
+		FAdditionalWeaponInfo OldInfo;
+		if (CurrentWeapon)
+		{
+			OldInfo = CurrentWeapon->AdditionalWeaponInfo;
+			if (CurrentWeapon->WeaponReloading)
+				1 + 1;
+				//CurrentWeapon->CancelReload();
+		}
+		if (InventoryComponent)
+		{
+			if (InventoryComponent->SwitchWeaponToIndex(CurrentIndexWeapon - 1, OldIndex, OldInfo))
+			{
+			}
+		}
+	}
 }
 
 void ATPSCharacter::MovementTick(float DeltaTime)
@@ -417,8 +483,17 @@ AWeaponDefault* ATPSCharacter::GetCurrentWeapon()
 }
 
 // Эта функция теперь будет принимать ID Оружия
-void ATPSCharacter::InitWeapon(FName IdWeaponName)
+void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponAdditionalInfo)
 {
+	// Проверка есть ли нынешнее оружие
+	// Логика уничтожает текущее оружие в руках и делает переменную пустой
+	// Ниже переменная обновляется (CurrentWeapon = myWeapon)
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->Destroy();
+		CurrentWeapon = nullptr;
+	}
+
 	// Нужно взять гейм инстанс и сделать каст на него
 	// Когда будет вызываться эта ф-я, будет давать наш BP_GameInstance 
 	UTPSGameInstance* myGI = Cast<UTPSGameInstance>(GetGameInstance());
@@ -467,15 +542,20 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName)
 					//myWeapon->WeaponInit(myWeaponInfo);
 					myWeapon->WeaponSetting = myWeaponInfo;
 					// Когда оружие инициализируется, нужно в Round записать максимальное кол-во патронов
-					myWeapon->WeaponInfo.Round = myWeaponInfo.MaxRound;
+					myWeapon->AdditionalWeaponInfo.Round = myWeaponInfo.MaxRound;
 					myWeapon->UpdateStateWeapon(MovementState);
+					     
+					myWeapon->AdditionalWeaponInfo = WeaponAdditionalInfo;
+					if (InventoryComponent)
+						CurrentIndexWeapon = InventoryComponent->GetWeaponIndexSlotByName(IdWeaponName);
 
 					// Когда иниц. оружие, нужно добавить делегаты
 					// Сперва получаем делегаты на начало и конец  перезарядки
 					// Далее вызываем AddDynamic,в аргумент даем ссылку на себя,
-					// тоесть кто случатель телегата? Character. Далее тот, кто услышал
+					// тоесть кто слушатель делегата? Character. Далее тот, кто услышал
 					// вызывает функцию. В это случае WeaponReloadStart или End
 					myWeapon->OnWeaponReloadStart.AddDynamic(this, &ATPSCharacter::WeaponReloadStart);
+					
 					myWeapon->OnWeaponReloadEnd.AddDynamic(this, &ATPSCharacter::WeaponReloadEnd);
 				}
 			}
@@ -486,12 +566,12 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName)
 void ATPSCharacter::TryReloadEvent()
 {
 
-	// Сперва проверяем что у персонажа есть текущее оружие
-	if (CurrentWeapon)
+	// Сперва проверяем что у персонажа есть текущее оружие и оно не перезаряжается
+	if (CurrentWeapon && !CurrentWeapon->WeaponReloading)
 	{
 		// Если текущее кол-во патронов больше? или равно максимальному количеству,
 		// то вызываем ф-ю инициализации перезарядки
-		if (CurrentWeapon->GetWeaponRound() <= CurrentWeapon->WeaponSetting.MaxRound)
+		if (CurrentWeapon->GetWeaponRound() < CurrentWeapon->WeaponSetting.MaxRound)
 		{
 			CurrentWeapon->InitReload();
 		}
@@ -505,10 +585,16 @@ void ATPSCharacter::WeaponReloadStart(UAnimMontage* Anim)
 	WeaponReloadStart_BP(Anim);
 }
 
-void ATPSCharacter::WeaponReloadEnd()
+void ATPSCharacter::WeaponReloadEnd(bool bIsSuccess,int32 AmmoTake)
 {
-	//
-	WeaponReloadEnd_BP();
+	// Берем инветарь и меняем паторы
+	// Когда перезаряжаем оружие, берем текущий тип оружия и сколько должны взять патронов
+	// Передаем в инвентарь сколько патронов осталось (AmmoSafe)
+	if (InventoryComponent)
+	{
+		InventoryComponent->WeaponChangeAmmo(CurrentWeapon->WeaponSetting.WeaponType,AmmoTake); // ?????????????
+	}
+	WeaponReloadEnd_BP(bIsSuccess);
 }
 
 void ATPSCharacter::WeaponReloadStart_BP_Implementation(UAnimMontage* Anim)
@@ -517,7 +603,7 @@ void ATPSCharacter::WeaponReloadStart_BP_Implementation(UAnimMontage* Anim)
 	
 }
 
-void ATPSCharacter::WeaponReloadEnd_BP_Implementation()
+void ATPSCharacter::WeaponReloadEnd_BP_Implementation(bool bIsSuccess)
 {
 	//
 	

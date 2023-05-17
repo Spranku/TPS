@@ -15,7 +15,7 @@
 // В аргументы: Имя делегата, ССЫЛКУ на аним.монтаж и его название
 // Ниже,в паблик поле класса эти переменные тоже надо объявить
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponReloadStart, UAnimMontage*, Anim);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWeaponReloadEnd);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponReloadEnd,bool,bIsSuccess,int32 ,AmmoSafe);
 
 
 UCLASS()
@@ -46,7 +46,7 @@ public:
 	// Еще одна структура. Информация в ней будет меняться
 	// Там будет храниться кол-во патронов в оружии
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WeaponInfo")
-	FAddicionalWeaponInfo WeaponInfo;
+	FAdditionalWeaponInfo AdditionalWeaponInfo;
 
 protected:
 	// Called when the game starts or when spawned
@@ -99,6 +99,9 @@ public:
 	void InitReload();
 	// Конец перезарядки
 	void FinishReload();
+	// Отмена перезарядки
+	void CancelReload();
+
 
 	//Timers'flags
 	float FireTime = 0.0f;

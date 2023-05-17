@@ -47,6 +47,10 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
 
+	// Компонени инвентаря
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+		class UTPSInventoryComponent* InventoryComponent;
+
 	/** A decal that projects to the cursor location. */
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	//class UDecalComponent* CursorToWorld;
@@ -92,20 +96,28 @@ public:
 		FName InitWeaponName;
 	// Cursor
 	UDecalComponent* CurrentCursor = nullptr;
+
+	// Индекс текущего оружия
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+		int32 CurrentIndexWeapon = 0;
 	
 
 
 	// Описание инпутов вверх-вниз
 	UFUNCTION()
-	void InputAxisX(float Value);
+		void InputAxisX(float Value);
     // Описание инпутов вправо-влево
 	UFUNCTION()
-	void InputAxisY(float Value);
+		void InputAxisY(float Value);
 	// Инпуты, отвечающие за стрельбу левой кнопкой мыши
 	UFUNCTION()
-	void InputAttackPressed();
+		void InputAttackPressed();
 	UFUNCTION()
-	void InputAttackReleased();
+		void InputAttackReleased();
+	UFUNCTION()
+		void TrySwitchNextWeapon();
+	UFUNCTION()
+		void SwitchPreviosWeapon();
 
 	// Переменные для инпутов
 	float AxisX = 0.0f;
@@ -146,7 +158,7 @@ public:
 	 
 	// Функция, которая спавнит оружие
 	UFUNCTION(BlueprintCallable)
-	void InitWeapon(FName IdWeapon);
+	void InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponAdditionalInfo);
 	UFUNCTION(BlueprintCallable)
 	void TryReloadEvent();
 
@@ -154,12 +166,12 @@ public:
 	UFUNCTION()
 		void WeaponReloadStart(UAnimMontage* Anim);
 	UFUNCTION()
-		void WeaponReloadEnd();
+		void WeaponReloadEnd(bool bIsSuccess,int32 AmmoSafe);
 	// Делегаты, которые видны в BP
 	UFUNCTION(BlueprintNativeEvent)
 		void WeaponReloadStart_BP(UAnimMontage* Anim);
 	UFUNCTION(BlueprintNativeEvent)
-		void WeaponReloadEnd_BP();
+		void WeaponReloadEnd_BP(bool bIsSuccess);
 
 	UFUNCTION(BlueprintCallable)
 	UDecalComponent* GetCursorToWorld();

@@ -187,7 +187,7 @@ void AWeaponDefault::Fire()
 	//
 	FireTime = WeaponSetting.RateOfFire;
 	// В момент выстрела минусуем патроны 
-	WeaponInfo.Round = WeaponInfo.Round - 1; \
+	AdditionalWeaponInfo.Round = AdditionalWeaponInfo.Round - 1; \
 	ChangeDispersionByShoot();
 
 	// Звук ружия
@@ -478,7 +478,7 @@ int8 AWeaponDefault::GetNumberProjectileByShot() const
 
 int32 AWeaponDefault::GetWeaponRound()
 {
-	return WeaponInfo.Round;
+	return AdditionalWeaponInfo.Round;
 }
 // Ф-я перезарядки
 void AWeaponDefault::InitReload()
@@ -501,9 +501,25 @@ void AWeaponDefault::InitReload()
 void AWeaponDefault::FinishReload()
 {
 	WeaponReloading = false;
+	// В лок.переменную передаем сколько было патронов в оружии до перезарядки
+	int32 AmmoNeedTake = AdditionalWeaponInfo.Round;
+	// Нужно от AmmoNeedTake отнять WeaponSettingMaxRound
+	// Если у нас 29 патронов в магазине,а макс 30, то мы должны взять лишь 1 патрон из инвентаря
+	AmmoNeedTake = AmmoNeedTake - WeaponSetting.MaxRound;
 	// Перезарядка прошла, кол-во патронов максимально
-	WeaponInfo.Round = WeaponSetting.MaxRound;
+	AdditionalWeaponInfo.Round = WeaponSetting.MaxRound;
+	// Когда оружие закончило перезарядку, отправляется информация в делегат
+	OnWeaponReloadEnd.Broadcast(true, AmmoNeedTake);
+}
 
-	OnWeaponReloadEnd.Broadcast();
+void AWeaponDefault::CancelReload()
+{
+	// Если есть скелет у оружия, то останавливаем у оружия все анимации,
+	// убираем флаг на перезарядку 
+	WeaponReloading = false;
+	if (SkeletalMeshWeapon && SkeletalMeshWeapon->GetAnimInstance())
+		SkeletalMeshWeapon->GetAnimInstance()->StopAllMontages(0.15f);
+	// Отправляется информация в делегат
+	OnWeaponReloadEnd.Broadcast(false,0);
 }
 

@@ -27,6 +27,23 @@ enum class EMovementState : uint8
 	SprintRun_State UMETA(DisplayName = "Sprint Run Speed")
 };
 
+// Структура с типами оружия
+UENUM(BlueprintType)
+enum class EWeaponType : uint8
+{
+	/*RifleType UMETA(DisplayName = "RifleType"),
+	ShootGunType UMETA(DisplayName = "ShootGunType"),
+	SniperRifle UMETA(DisplayName = "SniperRifle"),
+	GrenadeLauncher UMETA(DisplayName = "GrenadeLauncher"),
+	RocketLauncher UMETA(DisplayName = "RocketLauncher")*/
+
+	RifleType UMETA(DisplayName = "RifleType"),
+	SniperRifle UMETA(DisplayName = "SniperRifle"),
+	ShootGunType UMETA(DisplayName = "ShootGunType"),
+	PistolType UMETA(DisplayName = "Pistol"),
+	GrenadeLauncher UMETA(DisplayName = "GrenadeLauncher")
+};
+
 // Чтобы всё было структурировано, добавим структуру
 // Структуры добавляются практически также как ENUM
 // За исключением названия макроса.
@@ -221,10 +238,17 @@ struct FWeaponInfo : public FTableRowBase
 	//	float RateOfFire = 0.5f;
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WeaponSettings")
 	//	FProjectileInfo ProjectileSetting;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+		float SwitchTimeToWeapon = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+		UTexture2D* WeaponIcon = nullptr;
+	// Переменная для определения какое оружие перезарядилось
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+		EWeaponType WeaponType = EWeaponType::RifleType;
 
 };
 USTRUCT(BlueprintType)
-struct FAddicionalWeaponInfo
+struct FAdditionalWeaponInfo
 {
 	GENERATED_BODY()
 
@@ -254,6 +278,32 @@ struct FAnimationWeaponInfo
 		UAnimMontage* AnimWeaponReloadAim = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
 		UAnimMontage* Fire = nullptr;
+};
+
+USTRUCT(BlueprintType)
+struct FWeaponSlot
+{
+	GENERATED_BODY()
+
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Slot")
+	//	int32 IndexSlot = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
+		FName NameItem;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
+		FAdditionalWeaponInfo AdditionalInfo;
+};
+
+USTRUCT(BlueprintType)
+struct FAmmoSlot
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ammo Stats")
+		EWeaponType WeaponType = EWeaponType::RifleType;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
+		int32 Cout = 100;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
+		int32 MaxCout = 100;
 };
 
 UCLASS()
