@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "/My_Projects/TPS/Source/TPS/FunctionLibrary/Type.h"
 #include "TPSInventoryComponent.generated.h"
-
+// Делегат, сообщающий что оружие начало меняться
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSwitchWeapon,
 	FName,
 	WeaponIdName,
@@ -18,6 +18,21 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChange,
 	TypeAmmo,
 	int32,
 	Cout);
+// Делегат,сообщающий что делаем перезарядку
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponAdditionalInfoChange,
+	int32,
+	IndexSlot,
+	FAdditionalWeaponInfo,
+	AdditionalInfo);
+// Делегат, сообщающий что патроны для оружия закончились
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponAmmoEmpty,
+	EWeaponType,
+	WeaponType);
+
+// Делегат, сообщающий что сменили оружие
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponAmmoAviable, 
+	EWeaponType, 
+	WeaponType);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class TPS_API UTPSInventoryComponent : public UActorComponent
@@ -31,7 +46,15 @@ public:
 	FOnSwitchWeapon OnSwitchWeapon;
 	// Переменна делегата, сообщает что перезарядка прошла успешно
 	UPROPERTY(BlueprintAssignable,EditAnywhere,BlueprintReadWrite,Category = "Inventory")
-	FOnAmmoChange OnAmmoChange;
+		FOnAmmoChange OnAmmoChange;
+	//Переменная делегата, сообщает, что делаем перезарядку
+	UPROPERTY(BlueprintAssignable, EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+		FOnWeaponAdditionalInfoChange OnWeaponAdditionalInfoChange;
+	// Переменная делегата, сообщает, что патроны для оружия закончились
+	UPROPERTY(BlueprintAssignable, EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+		FOnWeaponAmmoEmpty OnWeaponAmmoEmpty;
+	UPROPERTY(BlueprintAssignable, EditAnywhere, BlueprintReadWrite, Category = "Inventory")
+		FOnWeaponAmmoAviable OnWeaponAmmoAviable;
 
 protected:
 	// Called when the game starts
@@ -53,7 +76,10 @@ public:
 
 	// Основная функция, которая пригодится в будущем. Аргументы: другой индекс, старый индекс, старая инфа
 	// OldInfo - патроны в текущем оружии
-	 bool SwitchWeaponToIndex(int32 ChangeToIndex, int32 OldIndex, FAdditionalWeaponInfo OldInfo);
+	 bool SwitchWeaponToIndex(int32 ChangeToIndex, 
+		 int32 OldIndex, 
+		 FAdditionalWeaponInfo OldInfo, 
+		 bool bIsForward);
 
 	// Дает инфо сколько патронов осталось по индексу
 	FAdditionalWeaponInfo GetAdditionalInfoWeapon(int32 IndexWeapon);
@@ -64,5 +90,6 @@ public:
 	// Записывает инфо по индексу
 	void SetAdditionalInfoWeapon(int32 IndexWeapon, FAdditionalWeaponInfo NewInfo);
 	// Тип оружия и AmmoTaken - кол-во патронов, которых мы отобрали
-	void WeaponChangeAmmo(EWeaponType TypeWeapon, int32 AmmoTaken);
+	void AmoSlotChangeValue(EWeaponType TypeWeapon, int32 AmmoTaken);
+	bool CheckAmmoForWeapon(EWeaponType TypeWeapon, int8& AviableAmmoForWeapon);
 };

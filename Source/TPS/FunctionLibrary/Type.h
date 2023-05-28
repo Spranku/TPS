@@ -181,6 +181,52 @@ struct FWeaponDispersion
 };
 
 USTRUCT(BlueprintType)
+struct FAnimationWeaponInfo
+{
+	GENERATED_BODY()
+
+		// Переменные анимаций
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
+		UAnimMontage* AnimCharFire = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
+		UAnimMontage* AnimCharFireAim = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
+		UAnimMontage* AnimCharReload = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
+		UAnimMontage* AnimCharReloadAim = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
+		UAnimMontage* AnimWeaponReload = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
+		UAnimMontage* AnimWeaponReloadAim = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
+		UAnimMontage* AnimWeaponFire = nullptr;
+};
+
+USTRUCT(BlueprintType)
+struct FDropMeshInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DropMesh")
+		UStaticMesh* DropMesh = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DropMesh")
+		float DropMeshTime = -1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DropMesh")
+		float DropMeshLifeTime = 5.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DropMesh")
+		FTransform DropMeshOffset = FTransform();
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DropMesh")
+		FVector DropMeshImpulseDir = FVector(0.0f);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DropMesh")
+		float PowerImpulse = 0.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DropMesh")
+		float ImpulseRandomDispersion = 0.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DropMesh")
+		float CustomMass = 0.0f;
+};
+
+USTRUCT(BlueprintType)
 // Этот синтаксис и подключенный DataTable позволяет
 // создавать на основе этой структуры таблицы в проекте.
 struct FWeaponInfo : public FTableRowBase 
@@ -199,19 +245,18 @@ struct FWeaponInfo : public FTableRowBase
 	// Для дробовика
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
 		int32 NumberProjectileByShot = 1;
-
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Dispersion")
 		FWeaponDispersion DispersionWeapon;					// Структура разброса оружия
-
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Sound")
 		USoundBase* SoundFireWeapon = nullptr;
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Sound")
 		USoundBase* SoundReloadWeapon = nullptr;
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "FX")
 		UParticleSystem* EffectFireWeapon = nullptr;	// Эффект при выстреле
-
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Projectile")
 		FProjectileInfo ProjectileSetting;
+
+	
 
 	// В случае,если нет projectile, то оружие будет стрелять трейсами
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Trace")
@@ -221,16 +266,21 @@ struct FWeaponInfo : public FTableRowBase
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "HitEffect")
 		UDecalComponent* DecalOnHit = nullptr;
-
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Anim")
 		UAnimMontage* AnimCharFire = nullptr;				// Переменные анимаций
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Anim")
 		UAnimMontage* AnimCharReload = nullptr;
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim ")
+		FAnimationWeaponInfo AnimWeaponInfo; 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Mesh")
 		UStaticMesh* MagazineDrop = nullptr;                // Падающий магазин
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Mesh")
 		UStaticMesh* SleeveBullets = nullptr;				// Падающие гильзы
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mesh")
+		FDropMeshInfo ClipDropMesh;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mesh")
+		FDropMeshInfo ShellBullets;
+
 
 	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WeaponSettings")
 	//	float WeaponDamage = 20.0f;
@@ -257,28 +307,7 @@ struct FAdditionalWeaponInfo
 
 };
 
-USTRUCT(BlueprintType)
-struct FAnimationWeaponInfo
-{
-	GENERATED_BODY()
 
-		// Переменные анимаций
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
-		UAnimMontage* AnimCharFire = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
-		UAnimMontage* AnimCharFireAim = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
-		UAnimMontage* AnimCharReload = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Char")
-		UAnimMontage* AnimCharReloadAim = nullptr;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
-		UAnimMontage* AnimWeaponReload = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
-		UAnimMontage* AnimWeaponReloadAim = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Weapon")
-		UAnimMontage* Fire = nullptr;
-};
 
 USTRUCT(BlueprintType)
 struct FWeaponSlot

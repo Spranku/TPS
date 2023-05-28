@@ -16,6 +16,7 @@
 // Ниже,в паблик поле класса эти переменные тоже надо объявить
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponReloadStart, UAnimMontage*, Anim);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponReloadEnd,bool,bIsSuccess,int32 ,AmmoSafe);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponFireStart, UAnimMontage*, AnimFireChar);
 
 
 UCLASS()
@@ -29,6 +30,7 @@ public:
 	// Объявление переменных делегата
 	FOnWeaponReloadStart OnWeaponReloadStart;
 	FOnWeaponReloadEnd OnWeaponReloadEnd;
+	FOnWeaponFireStart OnWeaponFireStart;
 
 	// Переменные,которые создаются и заносятся как компоненты в BP
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = Components)
@@ -66,6 +68,7 @@ public:
 	// Ф-я которая инициализирует всё оружие
 	void WeaponInit();
 
+
 	// Булевая переменная, отвечающая за возможность стрельбы
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FireLogic")
 		bool WeaponFiring = false;
@@ -102,13 +105,34 @@ public:
 	// Отмена перезарядки
 	void CancelReload();
 
+	bool CheckCanWeaponReload();
+	int8 GetAviableAmmoForReload();
+
+	void ShellDropTick(float DeltaTime);
+	void ClipDropTick(float DeltaTime);
+
+	UFUNCTION()
+		void InitDropMesh(UStaticMesh* DropMesh, 
+			FTransform Offset, 
+			FVector DropImpulseDirection, 
+			float LifeTimeMesh, 
+			float ImpulseRandomDispersion, 
+			float PowerImpulse, 
+			float CustomMass);
 
 	//Timers'flags
 	float FireTime = 0.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReloadLogic")
 	float ReloadTimer = 0.0f;
+	bool WeaponAiming = false;
 
 	bool BlockFire = false;
+	// Timer drop magazine on Reload
+	bool DropClipFlag = false;
+	float DropClipTimer = -1.0f;
+	// Shell flag
+	bool DropShellFlag = false;
+	float DropShellTimer = -1.0f;
 	
 	// Разброс
 	bool ShouldReduseDespersion = false;

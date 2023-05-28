@@ -3,6 +3,11 @@
 
 #include "Game/WeaponDefault.h"
 #include <Kismet/GameplayStatics.h> 
+#include "/My_Projects/TPS/Source/TPS/Character/TPSInventoryComponent.h"
+#include "Engine/StaticMeshActor.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "DrawDebugHelpers.h"
+
 
 
 // Sets default values
@@ -51,40 +56,22 @@ void AWeaponDefault::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	FireTick(DeltaTime);
-	// Тик перезарядки пишем в основном тике
 	ReloadTick(DeltaTime);
 	DispersionTick(DeltaTime);
+	ClipDropTick(DeltaTime);
+	ShellDropTick(DeltaTime);
 }
 
 void AWeaponDefault::FireTick(float DeltaTime)
 {
-	// Каждый кадр, по сути оружие пытается выстрелить
-	// Проверка идёт: разрешено ли оружию стрелять
-	// Лишь переменная контролирует огонь
-	// Есть так же переменна FireTime - простой таймер, 
-	// который обновляется из структуры RateOfFire
-	
-	// Если патронов больше 0, то стреляем
-	if (GetWeaponRound() > 0)
+	if (WeaponFiring && GetWeaponRound() > 0 && !WeaponReloading)
 	{
-		if (WeaponFiring)
-			if (FireTime < 0.f)
-			{
-				// Если оружие находится в заряженном состоянии, то оно может стрелять
-				if (!WeaponReloading)
-					Fire();
-			}
-			else
-				FireTime -= DeltaTime;
-	}
-	else
-		// иначе инициируем перезарядку
-	{
-		if (!WeaponReloading)
-			// Если оружие еще не перезаряжается
+		if (FireTime < 0.f)
 		{
-			InitReload();
+				Fire();
 		}
+		else
+			FireTime -= DeltaTime;
 	}
 }
 
@@ -182,6 +169,38 @@ FProjectileInfo AWeaponDefault::GetProjectile()
 
 void AWeaponDefault::Fire()
 {
+	UAnimMontage* AnimToPlay = nullptr;
+
+	if (WeaponAiming)
+		AnimToPlay = WeaponSetting.AnimWeaponInfo.AnimCharFireAim;
+	else
+		AnimToPlay = WeaponSetting.AnimWeaponInfo.AnimCharFire;
+
+	if (WeaponSetting.AnimWeaponInfo.AnimWeaponFire
+		&& SkeletalMeshWeapon
+		&& SkeletalMeshWeapon->GetAnimInstance())//Bad Code? maybe best way init local variable or in func
+	{
+		SkeletalMeshWeapon->GetAnimInstance()->Montage_Play(WeaponSetting.AnimWeaponInfo.AnimWeaponFire);
+	}
+
+	if (WeaponSetting.ShellBullets.DropMesh)
+	{
+		if (WeaponSetting.ShellBullets.DropMeshTime < 0.0f)
+		{
+			InitDropMesh(WeaponSetting.ShellBullets.DropMesh, 
+				WeaponSetting.ShellBullets.DropMeshOffset, 
+				WeaponSetting.ShellBullets.DropMeshImpulseDir, 
+				WeaponSetting.ShellBullets.DropMeshLifeTime, 
+				WeaponSetting.ShellBullets.ImpulseRandomDispersion, 
+				WeaponSetting.ShellBullets.PowerImpulse, 
+				WeaponSetting.ShellBullets.CustomMass);
+		}
+		else
+		{
+			DropShellFlag = true;
+			DropShellTimer = WeaponSetting.ShellBullets.DropMeshTime;
+		}
+	}
 	// У оружия есть структура веапон сеттинг,мы обращаемся к рейтоффайр,
 	// Рейтоффайр у винтовки = 0.5, и Файр тайм становится 0.5
 	//
@@ -189,6 +208,8 @@ void AWeaponDefault::Fire()
 	// В момент выстрела минусуем патроны 
 	AdditionalWeaponInfo.Round = AdditionalWeaponInfo.Round - 1; \
 	ChangeDispersionByShoot();
+
+	OnWeaponFireStart.Broadcast(AnimToPlay);
 
 	// Звук ружия
 	// SpawnSoundAtLocation() принимает аргументы: GetWorld(), сам звук( уже настроен в таблицах SoundFireWeapon)
@@ -373,6 +394,16 @@ void AWeaponDefault::Fire()
 			}
 		}
 	}
+
+	// После того как оружие отработает и посчитает сколько патронов было потрачено,
+	// тогда  иниц проверку может оружию пора перезаряжаться?
+	// Если это правда, и оно не находится в сост. перезарядки,
+	// пытаемся перезарядить
+	if (GetWeaponRound() <= 0 && !WeaponReloading)
+	{
+		if (CheckCanWeaponReload())
+			InitReload();
+	}
 }
 
 void AWeaponDefault::UpdateStateWeapon(EMovementState NewMovementState)
@@ -496,20 +527,36 @@ void AWeaponDefault::InitReload()
 	// Проверка если есть анимация, делаем Broadcast()
 	if(WeaponSetting.AnimCharReload)
 		OnWeaponReloadStart.Broadcast(WeaponSetting.AnimCharReload);
+
+	// Когда начинается перезарядка, логика InitDropMesh отрабатывает
+	if (WeaponSetting.ClipDropMesh.DropMesh)
+	{
+		DropClipFlag = true;
+		DropClipTimer = WeaponSetting.ClipDropMesh.DropMeshTime;
+	}
 }
 
 void AWeaponDefault::FinishReload()
 {
 	WeaponReloading = false;
-	// В лок.переменную передаем сколько было патронов в оружии до перезарядки
-	int32 AmmoNeedTake = AdditionalWeaponInfo.Round;
-	// Нужно от AmmoNeedTake отнять WeaponSettingMaxRound
-	// Если у нас 29 патронов в магазине,а макс 30, то мы должны взять лишь 1 патрон из инвентаря
-	AmmoNeedTake = AmmoNeedTake - WeaponSetting.MaxRound;
-	// Перезарядка прошла, кол-во патронов максимально
-	AdditionalWeaponInfo.Round = WeaponSetting.MaxRound;
+
+	int8 AviableAmmoFromInventory = GetAviableAmmoForReload();
+	int8 AmmoNeedTakeFromInv;
+	int8 NeedToReload = WeaponSetting.MaxRound - AdditionalWeaponInfo.Round;
+
+	if (NeedToReload > AviableAmmoFromInventory)
+	{
+		AdditionalWeaponInfo.Round = AviableAmmoFromInventory;
+		AmmoNeedTakeFromInv = AviableAmmoFromInventory;
+	}
+	else
+	{
+		AdditionalWeaponInfo.Round += NeedToReload;
+		AmmoNeedTakeFromInv = NeedToReload;
+	}
+
 	// Когда оружие закончило перезарядку, отправляется информация в делегат
-	OnWeaponReloadEnd.Broadcast(true, AmmoNeedTake);
+	OnWeaponReloadEnd.Broadcast(true, AmmoNeedTakeFromInv);
 }
 
 void AWeaponDefault::CancelReload()
@@ -521,5 +568,160 @@ void AWeaponDefault::CancelReload()
 		SkeletalMeshWeapon->GetAnimInstance()->StopAllMontages(0.15f);
 	// Отправляется информация в делегат
 	OnWeaponReloadEnd.Broadcast(false,0);
+}
+
+bool AWeaponDefault::CheckCanWeaponReload()
+{
+	// У этого оружия есть владелец
+	// у владельца есть инвентарь
+	// Если MyInv есть,тогда постараемся стянуть информацию, может ли он перезаряжаться
+	// Если нет ни владельца, ни инвентаря, тогда result = true;
+	// Если мы не можем найти инвентарь, тогда считаем что боеприпасы бесконечны.
+	//
+	bool result = true;
+	if (GetOwner())
+	{
+		UTPSInventoryComponent* MyInv = Cast<UTPSInventoryComponent>(GetOwner()->GetComponentByClass(UTPSInventoryComponent::StaticClass()));
+		if (MyInv)
+		{
+			int8 AviableAmmoForWeapon;
+			if (!MyInv->CheckAmmoForWeapon(WeaponSetting.WeaponType, AviableAmmoForWeapon))
+			{
+				result = false;
+			}
+		}
+	}
+	return result;
+}
+// Взять количество патронов до перезарядки
+int8 AWeaponDefault::GetAviableAmmoForReload()
+{
+	int8 AviableAmmoForWeapon = WeaponSetting.MaxRound;
+	if (GetOwner())
+	{
+		UTPSInventoryComponent* MyInv = Cast<UTPSInventoryComponent>(GetOwner()->GetComponentByClass(UTPSInventoryComponent::StaticClass()));
+		if (MyInv)
+		{
+			if (MyInv->CheckAmmoForWeapon(WeaponSetting.WeaponType, AviableAmmoForWeapon))
+			{
+				AviableAmmoForWeapon = AviableAmmoForWeapon;
+			}
+		}
+	}
+	return AviableAmmoForWeapon;
+}
+
+void AWeaponDefault::ShellDropTick(float DeltaTime)
+{
+	if (DropShellFlag)
+	{
+		if (DropShellTimer < 0.0f)
+		{
+			DropShellFlag = false;
+			InitDropMesh(WeaponSetting.ShellBullets.DropMesh, 
+				WeaponSetting.ShellBullets.DropMeshOffset, 
+				WeaponSetting.ShellBullets.DropMeshImpulseDir, 
+				WeaponSetting.ShellBullets.DropMeshLifeTime, 
+				WeaponSetting.ShellBullets.ImpulseRandomDispersion, 
+				WeaponSetting.ShellBullets.PowerImpulse, 
+				WeaponSetting.ShellBullets.CustomMass);
+				
+		}
+		else
+			DropShellTimer -= DeltaTime;
+	}
+}
+
+void AWeaponDefault::ClipDropTick(float DeltaTime)
+{
+	if (DropClipFlag)
+	{
+		if (DropClipTimer < 0.0f)
+		{
+			DropClipFlag = false;
+			InitDropMesh(WeaponSetting.ClipDropMesh.DropMesh, 
+				WeaponSetting.ClipDropMesh.DropMeshOffset, 
+				WeaponSetting.ClipDropMesh.DropMeshImpulseDir, 
+				WeaponSetting.ClipDropMesh.DropMeshLifeTime, 
+				WeaponSetting.ClipDropMesh.ImpulseRandomDispersion, 
+				WeaponSetting.ClipDropMesh.PowerImpulse, 
+				WeaponSetting.ClipDropMesh.CustomMass);
+		}
+		else
+			DropClipTimer -= DeltaTime;
+	}
+}
+
+void AWeaponDefault::InitDropMesh(UStaticMesh* DropMesh, 
+	FTransform Offset, FVector DropImpulseDirection, 
+	float LifeTimeMesh, 
+	float ImpulseRandomDispersion, 
+	float PowerImpulse, 
+	float CustomMass)
+{
+	// Берем нулевой пивот блупринта оружия, берем форвард вектор и умножаем его по X,Y,Z, получая локальную позицию
+	// относительно оружия. Запихиваем это в трансформ, чтобы заспавнить объект создаем переменную статик меш актор
+	// Основная ф-я GetWorld()->SpawnActor<AStaticMeshActor>, делаем его статичным, выставляем трансформ и параметры
+	if (DropMesh)
+	{
+		FTransform Transform;
+
+		FVector LocalDir = this->GetActorForwardVector() * Offset.GetLocation().X + this->GetActorRightVector() * Offset.GetLocation().Y + this->GetActorUpVector() * Offset.GetLocation().Z;
+
+		Transform.SetLocation(GetActorLocation() + LocalDir);
+		Transform.SetScale3D(Offset.GetScale3D());
+
+		Transform.SetRotation((GetActorRotation() + Offset.Rotator()).Quaternion());
+		AStaticMeshActor* NewActor = nullptr;
+
+
+		FActorSpawnParameters Param;
+		Param.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+		Param.Owner = this;
+		NewActor = GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass(), Transform, Param);
+
+		if (NewActor && NewActor->GetStaticMeshComponent())
+		{
+			NewActor->GetStaticMeshComponent()->SetCollisionProfileName(TEXT("IgnoreOnlyPawn"));
+			NewActor->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+
+			//set parameter for new actor
+			NewActor->SetActorTickEnabled(false);
+			NewActor->InitialLifeSpan = LifeTimeMesh;
+
+			NewActor->GetStaticMeshComponent()->Mobility = EComponentMobility::Movable;
+			NewActor->GetStaticMeshComponent()->SetSimulatePhysics(true);
+			NewActor->GetStaticMeshComponent()->SetStaticMesh(DropMesh);
+			//NewActor->GetStaticMeshComponent()->SetCollisionObjectType()
+
+
+
+			NewActor->GetStaticMeshComponent()->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
+			NewActor->GetStaticMeshComponent()->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECollisionResponse::ECR_Ignore);
+			NewActor->GetStaticMeshComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECollisionResponse::ECR_Ignore);
+			NewActor->GetStaticMeshComponent()->SetCollisionResponseToChannel(ECC_WorldStatic, ECollisionResponse::ECR_Block);
+			NewActor->GetStaticMeshComponent()->SetCollisionResponseToChannel(ECC_WorldDynamic, ECollisionResponse::ECR_Block);
+			NewActor->GetStaticMeshComponent()->SetCollisionResponseToChannel(ECC_PhysicsBody, ECollisionResponse::ECR_Block);
+
+
+
+			if (CustomMass > 0.0f)
+			{
+				NewActor->GetStaticMeshComponent()->SetMassOverrideInKg(NAME_None, CustomMass, true);
+			}
+
+			if (!DropImpulseDirection.IsNearlyZero())
+			{
+				FVector FinalDir;
+				LocalDir = LocalDir + (DropImpulseDirection * 1000.0f);
+
+				if (!FMath::IsNearlyZero(ImpulseRandomDispersion))
+					FinalDir += UKismetMathLibrary::RandomUnitVectorInConeInDegrees(LocalDir, ImpulseRandomDispersion);
+				FinalDir.GetSafeNormal(0.0001f);
+
+				NewActor->GetStaticMeshComponent()->AddImpulse(FinalDir * PowerImpulse);
+			}
+		}
+	}
 }
 

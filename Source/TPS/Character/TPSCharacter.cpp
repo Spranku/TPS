@@ -200,7 +200,7 @@ void ATPSCharacter::TrySwitchNextWeapon()
 			// Убеждаемся, что есть InventoryComponent
 			// 
 			//
-			if(InventoryComponent->SwitchWeaponToIndex(CurrentIndexWeapon +1, OldIndex, OldInfo))
+			if(InventoryComponent->SwitchWeaponToIndex(CurrentIndexWeapon +1, OldIndex, OldInfo,true))
 			{ }
 		}
 	}
@@ -224,7 +224,7 @@ void ATPSCharacter::SwitchPreviosWeapon()
 		}
 		if (InventoryComponent)
 		{
-			if (InventoryComponent->SwitchWeaponToIndex(CurrentIndexWeapon - 1, OldIndex, OldInfo))
+			if (InventoryComponent->SwitchWeaponToIndex(CurrentIndexWeapon - 1, OldIndex, OldInfo,false))
 			{
 			}
 		}
@@ -520,7 +520,7 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponA
 				// игнорируя конфликты с другими коллизиями 
 				FActorSpawnParameters SpawnParams;
 				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-				SpawnParams.Owner = GetOwner();           // устанавливаем наш
+				SpawnParams.Owner = this;           // устанавливаем наш
 				SpawnParams.Instigator = GetInstigator(); // TPSCharacter
 
 				// Далее идет функция GetWold()->SpawnActor, который принимает параметры
@@ -537,6 +537,7 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponA
 					myWeapon->AttachToComponent(GetMesh(), Rule, FName("WeaponSocketRightHand"));
 					// После этого записываем в переменную оружие, которым владеет наш персонаж
 					CurrentWeapon = myWeapon;
+					
 
 					// Структура myWeaponInfo инициализирует оружие
 					//myWeapon->WeaponInit(myWeaponInfo);
@@ -555,9 +556,24 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponA
 					// тоесть кто слушатель делегата? Character. Далее тот, кто услышал
 					// вызывает функцию. В это случае WeaponReloadStart или End
 					myWeapon->OnWeaponReloadStart.AddDynamic(this, &ATPSCharacter::WeaponReloadStart);
-					
 					myWeapon->OnWeaponReloadEnd.AddDynamic(this, &ATPSCharacter::WeaponReloadEnd);
+					myWeapon->OnWeaponFireStart.AddDynamic(this, &ATPSCharacter::WeaponFireStart);
+
+					// Когда обратно переключаемся на оружие, а в нём нет патронов,
+					// в начале жизненного цикла иниц. перезарядку (если это можно сделать)
+					// и если патроны в оружие = 0
+					//
+					if (CurrentWeapon->GetWeaponRound() <= 0 && CurrentWeapon->CheckCanWeaponReload())
+						CurrentWeapon->InitReload();
+
+					// Сообщает,что оружие поменяли и в оружии достаточно патронов
+					if(InventoryComponent)
+						InventoryComponent->OnWeaponAmmoAviable.Broadcast(myWeapon->WeaponSetting.WeaponType);
 				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ATPSCharacter::InitWeapon - Weapon not found in table -NULL"));
 			}
 		}
 	}
@@ -571,7 +587,7 @@ void ATPSCharacter::TryReloadEvent()
 	{
 		// Если текущее кол-во патронов больше? или равно максимальному количеству,
 		// то вызываем ф-ю инициализации перезарядки
-		if (CurrentWeapon->GetWeaponRound() < CurrentWeapon->WeaponSetting.MaxRound)
+		if (CurrentWeapon->GetWeaponRound() < CurrentWeapon->WeaponSetting.MaxRound && CurrentWeapon->CheckCanWeaponReload())
 		{
 			CurrentWeapon->InitReload();
 		}
@@ -592,7 +608,9 @@ void ATPSCharacter::WeaponReloadEnd(bool bIsSuccess,int32 AmmoTake)
 	// Передаем в инвентарь сколько патронов осталось (AmmoSafe)
 	if (InventoryComponent)
 	{
-		InventoryComponent->WeaponChangeAmmo(CurrentWeapon->WeaponSetting.WeaponType,AmmoTake); // ?????????????
+		InventoryComponent->AmoSlotChangeValue(CurrentWeapon->WeaponSetting.WeaponType,AmmoTake); 
+		
+		InventoryComponent->SetAdditionalInfoWeapon(CurrentIndexWeapon, CurrentWeapon->AdditionalWeaponInfo);
 	}
 	WeaponReloadEnd_BP(bIsSuccess);
 }
@@ -607,6 +625,20 @@ void ATPSCharacter::WeaponReloadEnd_BP_Implementation(bool bIsSuccess)
 {
 	//
 	
+}
+
+void ATPSCharacter::WeaponFireStart(UAnimMontage* Anim)
+{
+	if (InventoryComponent && CurrentWeapon)
+	{
+		InventoryComponent->SetAdditionalInfoWeapon(CurrentIndexWeapon, CurrentWeapon->AdditionalWeaponInfo);
+	}
+	WeaponFireStart_BP(Anim);
+}
+
+void ATPSCharacter::WeaponFireStart_BP_Implementation(UAnimMontage* Anim)
+{
+	// in BP
 }
 
 UDecalComponent* ATPSCharacter::GetCursorToWorld()
