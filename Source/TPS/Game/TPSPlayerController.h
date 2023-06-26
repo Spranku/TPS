@@ -45,6 +45,7 @@ protected:
 	void OnSetDestinationReleased();
 	// void OnTouchPressed(const ETouchIndex::Type FingerIndex, const FVector Location);
 	// void OnTouchReleased(const ETouchIndex::Type FingerIndex, const FVector Location);
+	virtual void OnUnPossess() override;
 
 private:
 	bool bInputPressed; // Input is bring pressed

@@ -1,7 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Character/TPSHealthComponent.h"
+// #include "Character/TPSHealthComponent.h"
+#include </My_Projects/TPS/Source/TPS/Character/TPSHealthComponent.h>
 
 // Sets default values for this component's properties
 UTPSHealthComponent::UTPSHealthComponent()
@@ -31,4 +32,34 @@ void UTPSHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 
 	// ...
 }
+
+float UTPSHealthComponent::GetCurrentHealth()
+{
+	return Health;
+}
+
+void UTPSHealthComponent::SetCurrentHealth(float NewHealth)
+{
+	Health = NewHealth;
+}
+
+void UTPSHealthComponent::ChangeCurrentHealth(float ChangeValue)
+{
+	Health += ChangeValue;
+	OnHealthChange.Broadcast(Health, ChangeValue);
+
+	if (Health > 100.0f)
+	{
+		Health = 100.0f;
+	}
+	else
+	{
+		if (Health < 0.0f)
+		{
+			OnDead.Broadcast();
+		}
+	}
+}
+
+
 

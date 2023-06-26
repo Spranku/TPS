@@ -59,6 +59,12 @@ ATPSCharacter::ATPSCharacter()
 	//CursorToWorld->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f).Quaternion());
 
 	InventoryComponent = CreateDefaultSubobject<UTPSInventoryComponent>(TEXT("InventoryComponent"));
+	CharHealthComponent = CreateDefaultSubobject<UTPSCharacterHealthComponent>(TEXT("HealthComponent"));
+
+	if (CharHealthComponent)
+	{
+		CharHealthComponent->OnDead.AddDynamic(this, &ATPSCharacter::CharDead);
+	}
 
 	if (InventoryComponent)
 	{
@@ -233,86 +239,88 @@ void ATPSCharacter::SwitchPreviosWeapon()
 
 void ATPSCharacter::MovementTick(float DeltaTime)
 {
-	// Up-Down movement
-	AddMovementInput(FVector(1.0, 0.0, 0.0) , AxisX);
-	// Left-Rigth movement
-	AddMovementInput(FVector(0.0, 1.0, 0.0) , AxisY);
+	if (bIsAlive)
+	{
+		// Up-Down movement
+		AddMovementInput(FVector(1.0, 0.0, 0.0), AxisX);
+		// Left-Rigth movement
+		AddMovementInput(FVector(0.0, 1.0, 0.0), AxisY);
 
-	// Логика разворот пешки к курсору
-	// Предварительно подключили библиотеку Kismet/GameplayStatics
-	// Создаем указатель типа Controller, из GameplayStatics
-	// берем контроллер игрока, передаем в качестве аргумента
-	// GetWorld и нулевой индекс контроллера
-	// APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	// проверка
-	// Теперь у переменной можно вызвать функцию GetHitResult
-	// if (myController && ToggleMouseInput)
-	// {
-		// Эта функция принимает значение ETraceTypeQuery
-		// По сути это трейс каналы, которые в С++ выглядят так:
-		// TraceTypeQuery1 UMETA (Hidden)
-		// TraceTypeQuery2 UMETA (Hidden)
-		// TraceTypeQuery3 UMETA (Hidden)
-		// ...
-		// Все трейсы, которые мы добавили вручную, начинаются с 6го!
-		// Поэтому выбираем шестой канал. Это и есть LanscapeCursor
-		// 
-		// Третий аргумент HitResult возвращает значение, поэтому 
-		// нужно заранее объявить переменную этого типа и передать 
-		// её в качестве аргумента
+		// Логика разворот пешки к курсору
+		// Предварительно подключили библиотеку Kismet/GameplayStatics
+		// Создаем указатель типа Controller, из GameplayStatics
+		// берем контроллер игрока, передаем в качестве аргумента
+		// GetWorld и нулевой индекс контроллера
+		// APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+		// проверка
+		// Теперь у переменной можно вызвать функцию GetHitResult
+		// if (myController && ToggleMouseInput)
+		// {
+			// Эта функция принимает значение ETraceTypeQuery
+			// По сути это трейс каналы, которые в С++ выглядят так:
+			// TraceTypeQuery1 UMETA (Hidden)
+			// TraceTypeQuery2 UMETA (Hidden)
+			// TraceTypeQuery3 UMETA (Hidden)
+			// ...
+			// Все трейсы, которые мы добавили вручную, начинаются с 6го!
+			// Поэтому выбираем шестой канал. Это и есть LanscapeCursor
+			// 
+			// Третий аргумент HitResult возвращает значение, поэтому 
+			// нужно заранее объявить переменную этого типа и передать 
+			// её в качестве аргумента
 
-	// 	FHitResult ResultHit;
-	// 	myController->GetHitResultUnderCursorByChannel(ETraceTypeQuery::TraceTypeQuery6, false, ResultHit);
-		
+		// 	FHitResult ResultHit;
+		// 	myController->GetHitResultUnderCursorByChannel(ETraceTypeQuery::TraceTypeQuery6, false, ResultHit);
+
 		// Далее чтобы прописать FindLookAtRotation, нужно подключить 
-		// библиотеку <Kismet/KismetMathLibrary.h>. 
-		// Оболочка Kismet для того, чтобы работать с ней в Blueprints
-		// Первый аргумент - местоположение пешки 
-		// Второй аргумент - ResultHit
-		// Третий аргумент - локация, куда тыкнули курсором. 
-		// UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location);
-		// 
-		// Далее вызываем функцию SetActorRotation.
-		// Эта функция принимает кватернион.Это ротация с 4 переменными.
-		// FQuat(X,Y,Z,W). Если пролистать аргументы функции FQuat,
-		// то можно увидеть что он может определиться простым Rotator,
-		// что нам и нужно. Определяем в кватернион Rotator. У него 
-		// три аргумента: InPitch/InYaw/InRoll. Pitch и Roll по нулям,
-		// но нужен Yaw (Z). Чтобы его достать мы можем поместить предыдущую
-		// строку и через точку вызвать Yaw,т.к. FindLookAtRotation 
-		// возвращает Rotation
-		// 
-		// SetActorRotation(FQuat(FRotator(0.0f, UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw, 0.0f)));
-		// 
-		// Чтобы упростить такую запись, достаточно создать переменную с типом float и присвоить ей строку c Yaw:
-	// 	float FindRotatorResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
-	// 	SetActorRotation(FQuat(FRotator(0.0f, FindRotatorResultYaw, 0.0f)));
-	// }
-	
-	// Ранее была допущена ошибка. В итоге поменяли функцию и изменили параметры.
-	// Раньше был TraceQuert6,сейчас ECC_GameTraceChannel1. Теперь курсор будет обрабатываться правильно
+			// библиотеку <Kismet/KismetMathLibrary.h>. 
+			// Оболочка Kismet для того, чтобы работать с ней в Blueprints
+			// Первый аргумент - местоположение пешки 
+			// Второй аргумент - ResultHit
+			// Третий аргумент - локация, куда тыкнули курсором. 
+			// UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location);
+			// 
+			// Далее вызываем функцию SetActorRotation.
+			// Эта функция принимает кватернион.Это ротация с 4 переменными.
+			// FQuat(X,Y,Z,W). Если пролистать аргументы функции FQuat,
+			// то можно увидеть что он может определиться простым Rotator,
+			// что нам и нужно. Определяем в кватернион Rotator. У него 
+			// три аргумента: InPitch/InYaw/InRoll. Pitch и Roll по нулям,
+			// но нужен Yaw (Z). Чтобы его достать мы можем поместить предыдущую
+			// строку и через точку вызвать Yaw,т.к. FindLookAtRotation 
+			// возвращает Rotation
+			// 
+			// SetActorRotation(FQuat(FRotator(0.0f, UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw, 0.0f)));
+			// 
+			// Чтобы упростить такую запись, достаточно создать переменную с типом float и присвоить ей строку c Yaw:
+		// 	float FindRotatorResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
+		// 	SetActorRotation(FQuat(FRotator(0.0f, FindRotatorResultYaw, 0.0f)));
+		// }
 
-	if (MovementState == EMovementState::SprintRun_State)
-	{
-		FVector myRotationVector = FVector(AxisX, AxisY, 0.0f);
-		FRotator myRotator = myRotationVector.ToOrientationRotator();
-		SetActorRotation((FQuat(myRotator)));
-	}
-	else
-	{
-		APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-		if (myController)
+		// Ранее была допущена ошибка. В итоге поменяли функцию и изменили параметры.
+		// Раньше был TraceQuert6,сейчас ECC_GameTraceChannel1. Теперь курсор будет обрабатываться правильно
+
+		if (MovementState == EMovementState::SprintRun_State)
 		{
-			FHitResult ResultHit;
-			myController->GetHitResultUnderCursor(ECC_GameTraceChannel1, true, ResultHit);
-
-			float FindRotaterResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
-			SetActorRotation(FQuat(FRotator(0.0f, FindRotaterResultYaw, 0.0f)));
-
-			
-			//
-			if(CurrentWeapon)
+			FVector myRotationVector = FVector(AxisX, AxisY, 0.0f);
+			FRotator myRotator = myRotationVector.ToOrientationRotator();
+			SetActorRotation((FQuat(myRotator)));
+		}
+		else
+		{
+			APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+			if (myController)
 			{
+				FHitResult ResultHit;
+				myController->GetHitResultUnderCursor(ECC_GameTraceChannel1, true, ResultHit);
+
+				float FindRotaterResultYaw = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), ResultHit.Location).Yaw;
+				SetActorRotation(FQuat(FRotator(0.0f, FindRotaterResultYaw, 0.0f)));
+
+
+				//
+				if (CurrentWeapon)
+				{
 					FVector Displacement = FVector(0);
 					switch (MovementState)
 					{
@@ -342,9 +350,10 @@ void ATPSCharacter::MovementTick(float DeltaTime)
 					// У нас есть результат попадания курсора на поверхность (ResultHit)
 					// В оружие посылаем этот результат
 					CurrentWeapon->ShootEndLocation = ResultHit.Location + Displacement;
+				}
 			}
 		}
-	}
+	}	
 	// Если у персонажа есть оружие и если скорость персонажа = 0,
 	// то оружие уменьшает сведение разброса
 	// Если персонаж бежит, то сведение увеличивается
@@ -483,7 +492,7 @@ AWeaponDefault* ATPSCharacter::GetCurrentWeapon()
 }
 
 // Эта функция теперь будет принимать ID Оружия
-void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponAdditionalInfo)
+void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponAdditionalInfo, int32 NewCurrentIndexWeapon)
 {
 	// Проверка есть ли нынешнее оружие
 	// Логика уничтожает текущее оружие в руках и делает переменную пустой
@@ -493,7 +502,6 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponA
 		CurrentWeapon->Destroy();
 		CurrentWeapon = nullptr;
 	}
-
 	// Нужно взять гейм инстанс и сделать каст на него
 	// Когда будет вызываться эта ф-я, будет давать наш BP_GameInstance 
 	UTPSGameInstance* myGI = Cast<UTPSGameInstance>(GetGameInstance());
@@ -537,19 +545,20 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponA
 					myWeapon->AttachToComponent(GetMesh(), Rule, FName("WeaponSocketRightHand"));
 					// После этого записываем в переменную оружие, которым владеет наш персонаж
 					CurrentWeapon = myWeapon;
-					
-
+				
 					// Структура myWeaponInfo инициализирует оружие
 					//myWeapon->WeaponInit(myWeaponInfo);
 					myWeapon->WeaponSetting = myWeaponInfo;
-					// Когда оружие инициализируется, нужно в Round записать максимальное кол-во патронов
-					myWeapon->AdditionalWeaponInfo.Round = myWeaponInfo.MaxRound;
+					
+					// What is this?
+					/*----------------------------------------*/
+					// myWeapon->ReloadTime = myWeaponInfo.ReloadTime;
+					// myWeapon->UpdateStateWeapon(MovementState);
+					/*----------------------------------------*/
 					myWeapon->UpdateStateWeapon(MovementState);
-					     
 					myWeapon->AdditionalWeaponInfo = WeaponAdditionalInfo;
-					if (InventoryComponent)
-						CurrentIndexWeapon = InventoryComponent->GetWeaponIndexSlotByName(IdWeaponName);
-
+					CurrentIndexWeapon = NewCurrentIndexWeapon;
+				
 					// Когда иниц. оружие, нужно добавить делегаты
 					// Сперва получаем делегаты на начало и конец  перезарядки
 					// Далее вызываем AddDynamic,в аргумент даем ссылку на себя,
@@ -608,7 +617,7 @@ void ATPSCharacter::WeaponReloadEnd(bool bIsSuccess,int32 AmmoTake)
 	// Передаем в инвентарь сколько патронов осталось (AmmoSafe)
 	if (InventoryComponent)
 	{
-		InventoryComponent->AmoSlotChangeValue(CurrentWeapon->WeaponSetting.WeaponType,AmmoTake); 
+		InventoryComponent->AmmoSlotChangeValue(CurrentWeapon->WeaponSetting.WeaponType,AmmoTake); 
 		
 		InventoryComponent->SetAdditionalInfoWeapon(CurrentIndexWeapon, CurrentWeapon->AdditionalWeaponInfo);
 	}
@@ -644,6 +653,47 @@ void ATPSCharacter::WeaponFireStart_BP_Implementation(UAnimMontage* Anim)
 UDecalComponent* ATPSCharacter::GetCursorToWorld()
 {
 	return CurrentCursor;
+}
+
+void ATPSCharacter::CharDead()
+{
+	float TimeAnim = 0.0f;
+	// Ф-я возвращает между 0 и числом которое поставили
+	int32 rnd = FMath::RandHelper(DeadsAnim.Num());
+	if (DeadsAnim.IsValidIndex(rnd) && DeadsAnim[rnd] && GetMesh() && GetMesh()->GetAnimInstance())
+	{
+		TimeAnim = DeadsAnim[rnd]->GetPlayLength();
+		GetMesh()->GetAnimInstance()->Montage_Play(DeadsAnim[rnd]);
+	}
+	bIsAlive = false;
+
+	UnPossessed();
+
+	// Таймер на время проигрывания анимации смерти,после нее вызовется ф-я ниже
+	GetWorldTimerManager().SetTimer(TimerHandle_RagDollTimer, this, &ATPSCharacter::EnableRagDoll, TimeAnim, false);
+
+	//GetCursorToWorld()->SetVisibility(false); приводит к ошибке
+}
+
+void ATPSCharacter::EnableRagDoll()
+{
+	if (GetMesh())
+	{
+		GetMesh()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+		GetMesh()->SetSimulatePhysics(true);
+	}
+}
+
+float ATPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	if (bIsAlive)
+	{
+		CharHealthComponent->ChangeCurrentHealth(-DamageAmount);
+	}
+	
+
+	return ActualDamage;
 }
 
 

@@ -3,6 +3,7 @@
 
 #include "/My_Projects/TPS/Source/TPS/Character/TPSInventoryComponent.h"
 #include "/My_Projects/TPS/Source/TPS/Game/TPSGameInstance.h"
+#pragma optimize ("", off)
 
 // Sets default values for this component's properties
 UTPSInventoryComponent::UTPSInventoryComponent()
@@ -13,7 +14,6 @@ UTPSInventoryComponent::UTPSInventoryComponent()
 
 	// ...
 }
-
 
 // Called when the game starts
 void UTPSInventoryComponent::BeginPlay()
@@ -37,9 +37,9 @@ void UTPSInventoryComponent::BeginPlay()
 				if (myGI->GetWeaponInfoByName(WeaponSlots[i].NameItem, Info))
 					WeaponSlots[i].AdditionalInfo.Round = Info.MaxRound;
 				else
-				{
-					WeaponSlots.RemoveAt(i);
-					i--;
+				{	// Не нужно удалять слоты, если они пустые
+					//WeaponSlots.RemoveAt(i);
+					//i--;
 				}
 			}
 		}
@@ -54,10 +54,9 @@ void UTPSInventoryComponent::BeginPlay()
 	if (WeaponSlots.IsValidIndex(0))
 	{
 		if (!WeaponSlots[0].NameItem.IsNone())
-			OnSwitchWeapon.Broadcast(WeaponSlots[0].NameItem, WeaponSlots[0].AdditionalInfo);
+			OnSwitchWeapon.Broadcast(WeaponSlots[0].NameItem, WeaponSlots[0].AdditionalInfo,0);
 	}
 }
-
 
 // Called every frame
 void UTPSInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -80,7 +79,6 @@ bool UTPSInventoryComponent::SwitchWeaponToIndex(int32 ChangeToIndex, int32 OldI
 
 	FName NewIdWeapon;
 	FAdditionalWeaponInfo NewAdditionalInfo;
-
 	int32 NewCurrentIndex = 0;
 
 	if (WeaponSlots.IsValidIndex(CorrectIndex))
@@ -397,9 +395,8 @@ bool UTPSInventoryComponent::SwitchWeaponToIndex(int32 ChangeToIndex, int32 OldI
 		// Когда всё происходит успешно, сохраняем старые данные того оружия которое поменяли.
 		// Когда оружие поменялось, вызывается Broadcast
 		SetAdditionalInfoWeapon(OldIndex, OldInfo);
-		OnSwitchWeapon.Broadcast(NewIdWeapon, NewAdditionalInfo);
+		OnSwitchWeapon.Broadcast(NewIdWeapon, NewAdditionalInfo, NewCurrentIndex);
 	}
-
 	return bIsSuccess;
 }
 
@@ -445,6 +442,17 @@ int32 UTPSInventoryComponent::GetWeaponIndexSlotByName(FName IdWeaponName)
 	return result;
 }
 
+FName UTPSInventoryComponent::GetWeaponNameBySlotIndex(int32 IndexSlot)
+{
+	FName result;
+	
+	if (WeaponSlots.IsValidIndex(IndexSlot))
+	{
+		result = WeaponSlots[IndexSlot].NameItem;
+	}
+	return result;
+}
+
 // Данная ф-я понадобится если появится если появится ящик с боеприпасами, через которые можно пополнить патроны
 // Тогда будем брать нынещнее оружие, вызывать функцию через инвентарь.
 // 
@@ -475,7 +483,7 @@ void UTPSInventoryComponent::SetAdditionalInfoWeapon(int32 IndexWeapon, FAdditio
 		UE_LOG(LogTemp, Warning, TEXT("UTPSInventoryComponent::SetAdditionalInfoWeapon - Not correct Index weapon - %d"), IndexWeapon);
 }
 
-void UTPSInventoryComponent::AmoSlotChangeValue(EWeaponType TypeWeapon, int32 AmmoTaken)
+void UTPSInventoryComponent::AmmoSlotChangeValue(EWeaponType TypeWeapon, int32 CoutChangeAmmo)
 {
 	// Создаем флаг, переменную ш
 	// Создаем цикл по сути For Each как в ВР
@@ -491,13 +499,12 @@ void UTPSInventoryComponent::AmoSlotChangeValue(EWeaponType TypeWeapon, int32 Am
 
 		if (AmmoSlots[i].WeaponType == TypeWeapon)
 		{
-			AmmoSlots[i].Cout -= AmmoTaken;
+			AmmoSlots[i].Cout += CoutChangeAmmo;
 			// Нужна еще проверка
 			// Если Аммо слот будет больше макс (напри 101), то нужно ограничение
 			if (AmmoSlots[i].Cout > AmmoSlots[i].MaxCout)
-			{
 				AmmoSlots[i].Cout = AmmoSlots[i].MaxCout;
-			}
+			
 			OnAmmoChange.Broadcast(AmmoSlots[i].WeaponType, AmmoSlots[i].Cout);
 			bIsFind = true;
 		}
@@ -527,3 +534,80 @@ bool UTPSInventoryComponent::CheckAmmoForWeapon(EWeaponType TypeWeapon, int8 &Av
 	return false;
 }
 
+bool UTPSInventoryComponent::CheckCanTakeAmmo(EWeaponType AmmoType)
+{
+	bool result = false;
+	int8 i = 0;
+	while (i < AmmoSlots.Num() && !result)
+	{
+		if (AmmoSlots[i].WeaponType == AmmoType && AmmoSlots[i].Cout < AmmoSlots[i].MaxCout)
+			result = true;
+		i++;
+	}
+	return result;
+}
+
+bool UTPSInventoryComponent::CheckCanTakeWeapon(int32 &FreeSlot)
+{
+	bool bIsFreeSlot = false;
+	int8 i = 0;
+	while (i < WeaponSlots.Num() && !bIsFreeSlot)
+	{
+		if (WeaponSlots[i].NameItem.IsNone())
+		{
+			// Если найден хотя-бы один свободный слот,то считаем что можем поднять оружие 
+			bIsFreeSlot = true;
+			FreeSlot = i;
+		}
+		i++; 
+	}
+	return bIsFreeSlot;
+}
+
+bool UTPSInventoryComponent::SwitchWeaponToInventory(FWeaponSlot NewWeapon, int32 IndexSlot,int32 CurrentIndexWeaponChar, FDropItem& DropItemInfo)
+{
+	bool result = false;
+	
+	if (WeaponSlots.IsValidIndex(IndexSlot) && GetDropItemInfoFromInventory(IndexSlot,DropItemInfo))
+	{
+		WeaponSlots[IndexSlot] = NewWeapon;
+		SwitchWeaponToIndex(CurrentIndexWeaponChar,-1,NewWeapon.AdditionalInfo,true);
+		OnUpdateWeaponSlots.Broadcast(IndexSlot, NewWeapon);
+		result = true;
+	}
+	return result;
+}
+
+bool UTPSInventoryComponent::TryGetWeaponToInventory(FWeaponSlot NewWeapon)
+{
+	int32 IndexSlot = -1;
+	if (CheckCanTakeWeapon(IndexSlot))
+	{
+		if (WeaponSlots.IsValidIndex(IndexSlot))
+		{
+			WeaponSlots[IndexSlot] = NewWeapon;
+			OnUpdateWeaponSlots.Broadcast(IndexSlot,NewWeapon);
+			return true;
+		}	
+	}
+	return false;
+}
+
+bool UTPSInventoryComponent::GetDropItemInfoFromInventory(int32 IndexSlot, FDropItem& DropItemInfo)
+{
+	bool result = false;
+	FName DropItemName = GetWeaponNameBySlotIndex(IndexSlot);
+
+	UTPSGameInstance* myGI = Cast<UTPSGameInstance>(GetWorld()->GetGameInstance());
+	if (myGI)
+	{
+		result = myGI->GetDropItemInfoByWeaponName(DropItemName,DropItemInfo);
+		if (WeaponSlots.IsValidIndex(IndexSlot))
+		{
+			DropItemInfo.WeaponInfo.AdditionalInfo = WeaponSlots[IndexSlot].AdditionalInfo;
+		}
+	}
+	return result;
+}
+
+#pragma optimize ("", on)

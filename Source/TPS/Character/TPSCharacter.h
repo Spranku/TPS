@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include <TPS/FunctionLibrary/Type.h>
 #include "Game/WeaponDefault.h"
+#include </My_Projects/TPS/Source/TPS/Character/TPSCharacterHealthComponent.h>
 #include "TPSCharacter.generated.h"
 
 
@@ -25,6 +26,11 @@ protected:
 	virtual void BeginPlay() override;
 public:
 	ATPSCharacter();
+
+	// Когда анимация смерти заканчивается, вкл таймер
+	FTimerHandle TimerHandle_RagDollTimer;
+
+
 	// Called every frame.
 	virtual void Tick(float DeltaSeconds) override;
 
@@ -37,6 +43,12 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns CursorToWorld subobject **/
 	//FORCEINLINE class UDecalComponent* GetCursorToWorld() { return CursorToWorld; }
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+		class UTPSInventoryComponent* InventoryComponent;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+		class UTPSCharacterHealthComponent* CharHealthComponent;
+
 
 private:
 	/** Top down camera */
@@ -48,8 +60,8 @@ private:
 	class USpringArmComponent* CameraBoom;
 
 	// Компонени инвентаря
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		class UTPSInventoryComponent* InventoryComponent;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	//	class UTPSInventoryComponent* InventoryComponent;
 
 	/** A decal that projects to the cursor location. */
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -77,13 +89,16 @@ public:
 	FCharacterSpeed MovementInfo;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	bool SprintRunEnabled = false;
-
+		bool SprintRunEnabled = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	bool WalkEnabled = false;
-
+		bool WalkEnabled = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	bool AimEnabled = false;
+		bool AimEnabled = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+		bool bIsAlive = true;
+	// Массив с анимациями смертей 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+		TArray<UAnimMontage*> DeadsAnim;
 
 	// переменная таймера спринта
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -100,8 +115,6 @@ public:
 	// Индекс текущего оружия
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 		int32 CurrentIndexWeapon = 0;
-	
-
 
 	// Описание инпутов вверх-вниз
 	UFUNCTION()
@@ -129,12 +142,6 @@ public:
 	UFUNCTION()
 	void MovementTick(float DeltaTime);
 
-	// Добавляем важные функции в Character
-	// В UE есть макросы для функций
-	// Мы будем использовать BlueprintCallable,
-	// которая говорит о том, что эту функцию можно
-	// вызвать в UE из BP
-
 	// Функция, которую вызывают инпуты стрельюы
 	UFUNCTION(BlueprintCallable)
 	void AttackCharEvent(bool bIsFiring);
@@ -158,7 +165,7 @@ public:
 	 
 	// Функция, которая спавнит оружие
 	UFUNCTION(BlueprintCallable)
-	void InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponAdditionalInfo);
+	void InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponAdditionalInfo,int32 NewCurrentIndexWeapon);
 	UFUNCTION(BlueprintCallable)
 	void TryReloadEvent();
 
@@ -179,5 +186,14 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	UDecalComponent* GetCursorToWorld();
+
+	// Ф-я отключения управления пешкой 
+	UFUNCTION(BlueprintCallable)
+	void CharDead();
+	void EnableRagDoll();
+	virtual float TakeDamage(float DamageAmount, 
+		struct FDamageEvent const& DamageEvent, 
+		class AController* EventInstigator, 
+		AActor* DamageCauser) override;
 };
 

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Character/TPSHealthComponent.h"
+#include </My_Projects/TPS/Source/TPS/Character/TPSHealthComponent.h>
 #include "TPSCharacterHealthComponent.generated.h"
 
 /**
@@ -14,4 +14,7 @@ class TPS_API UTPSCharacterHealthComponent : public UTPSHealthComponent
 {
 	GENERATED_BODY()
 	
+public:
+
+	void ChangeCurrentHealth(float ChangeValue) override;
 };

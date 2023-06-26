@@ -17,6 +17,8 @@ ATPSGameMode::ATPSGameMode()
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
 
+	
+
 	//set default controller to our Blueprinted controller
 	//static ConstructorHelpers::FClassFinder<APlayerController> PlayerControllerBPClass(TEXT("/Game/Blueprint/Character/BP_PlayerController"));
 	//if(PlayerControllerBPClass.Class != NULL)
@@ -24,4 +26,9 @@ ATPSGameMode::ATPSGameMode()
 	//	PlayerControllerClass = PlayerControllerBPClass.Class;
 		//Game/Blueprint/Character/BP_TopDownPlayerController
 	//}
+}
+
+void ATPSGameMode::PlayerCharacterDead()
+{
+
 }

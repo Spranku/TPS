@@ -297,6 +297,7 @@ struct FWeaponInfo : public FTableRowBase
 		EWeaponType WeaponType = EWeaponType::RifleType;
 
 };
+
 USTRUCT(BlueprintType)
 struct FAdditionalWeaponInfo
 {
@@ -306,8 +307,6 @@ struct FAdditionalWeaponInfo
 		int32 Round = 10; // Стартовое кол-во патронов в магазине 
 
 };
-
-
 
 USTRUCT(BlueprintType)
 struct FWeaponSlot
@@ -333,6 +332,23 @@ struct FAmmoSlot
 		int32 Cout = 100;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
 		int32 MaxCout = 100;
+};
+
+USTRUCT(BlueprintType)
+struct FDropItem : public FTableRowBase
+{
+	GENERATED_BODY()
+		// Таблица дропов
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop Weapon")
+		UStaticMesh* WeaponStaticMesh = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop Weapon")
+		USkeletalMesh* WeaponSkeletalMesh = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop Weapon")
+		UParticleSystem* ParticleSystem = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop Weapon")
+		FTransform Offset;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop Weapon")
+		FWeaponSlot WeaponInfo;
 };
 
 UCLASS()

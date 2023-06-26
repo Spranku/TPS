@@ -160,6 +160,11 @@ void ATPSPlayerController::OnSetDestinationReleased()
 	//}
 }
 
+void ATPSPlayerController::OnUnPossess()
+{
+	Super::OnUnPossess();
+}
+
 //void ATPSPlayerController::OnTouchPressed(const ETouchIndex::Type FingerIndex, const FVector Location)
 //{
 //	bIsTouch = true;

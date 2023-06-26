@@ -556,7 +556,7 @@ void AWeaponDefault::FinishReload()
 	}
 
 	// Когда оружие закончило перезарядку, отправляется информация в делегат
-	OnWeaponReloadEnd.Broadcast(true, AmmoNeedTakeFromInv);
+	OnWeaponReloadEnd.Broadcast(true, -AmmoNeedTakeFromInv);
 }
 
 void AWeaponDefault::CancelReload()

@@ -25,6 +25,12 @@ public:
 	// и брать информацию по этому оружию
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = " WeaponSetting ")
 		UDataTable* WeaponInfoTable = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = " WeaponSetting ")
+		UDataTable* DropItemInfoTable = nullptr;
 	UFUNCTION(BlueprintCallable)
 		bool GetWeaponInfoByName(FName NameWeapon, FWeaponInfo& OutInfo);
+	UFUNCTION(BlueprintCallable) // Символ & - указывает на выходные данные в BP
+		bool GetDropItemInfoByWeaponName(FName NameItem, FDropItem& OutInfo);
+	UFUNCTION(BlueprintCallable)
+		bool GetDropItemInfoByName(FName NameItem, FDropItem& OutInfo);
 };
