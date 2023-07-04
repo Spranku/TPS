@@ -43,10 +43,15 @@ void UTPSHealthComponent::SetCurrentHealth(float NewHealth)
 	Health = NewHealth;
 }
 
-void UTPSHealthComponent::ChangeCurrentHealth(float ChangeValue)
+void UTPSHealthComponent::ChangeHealthValue(float ChangeValue)
 {
+	// Перед тем, как наносить какой-либо урон, мы будем умножать 
+	// изменяемое значение на глобальный коэф. дамага
+	// Если он равен 2/3/4/5, то объект будет поглащать много урона
+	// А если он равен 5.0f, то выходит что объект бронирован в 2 раза
+	ChangeValue = ChangeValue * CoefDamage;
+
 	Health += ChangeValue;
-	OnHealthChange.Broadcast(Health, ChangeValue);
 
 	if (Health > 100.0f)
 	{
@@ -59,6 +64,8 @@ void UTPSHealthComponent::ChangeCurrentHealth(float ChangeValue)
 			OnDead.Broadcast();
 		}
 	}
+
+	OnHealthChange.Broadcast(Health, ChangeValue);
 }
 
 

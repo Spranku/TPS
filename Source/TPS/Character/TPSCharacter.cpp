@@ -689,9 +689,9 @@ float ATPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	if (bIsAlive)
 	{
-		CharHealthComponent->ChangeCurrentHealth(-DamageAmount);
+		//CharHealthComponent->ChangeCurrentHealth(-DamageAmount);
+		CharHealthComponent->ChangeHealthValue(-DamageAmount);
 	}
-	
 
 	return ActualDamage;
 }

@@ -72,8 +72,8 @@ void AProjectileDefault_Grenade::Explose()
 		ProjectileSetting.ExploseMaxDamage,
 		ProjectileSetting.ExploseMaxDamage*0.2f,
 		GetActorLocation(),
-		300/*1000.0f*/,
-		500.0f/*2000.0f*/,
+		ProjectileSetting.ProjectileMinRadiusDamage,
+		ProjectileSetting.ProjectileMaxRadiusDamage,
 		5,
 		NULL, IgnoreActor, nullptr, nullptr);
 	
