@@ -75,7 +75,7 @@ void AProjectileDefault_Grenade::Explose()
 		ProjectileSetting.ProjectileMinRadiusDamage,
 		ProjectileSetting.ProjectileMaxRadiusDamage,
 		5,
-		NULL, IgnoreActor, nullptr, nullptr);
+		NULL, IgnoreActor, this, nullptr);
 	
 	// Outside radius
 	//DrawDebugSphere(GetWorld(), GetActorLocation(), 500.0f, 100, FColor::Green, false, 10.0f);

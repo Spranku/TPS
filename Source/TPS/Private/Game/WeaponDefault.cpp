@@ -7,6 +7,7 @@
 #include "Engine/StaticMeshActor.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "DrawDebugHelpers.h"
+#include "Game/TPS_StateEffect.h"
 
 
 
@@ -356,41 +357,22 @@ void AWeaponDefault::Fire()
 							Hit.ImpactNormal);
 					}
 
-					UGameplayStatics::ApplyDamage(Hit.GetActor(),
+					UType::AddEffecttBySurfaceType(Hit.GetActor(), ProjectileInfo.Effect, mySurfaceType);
+
+					UGameplayStatics::ApplyPointDamage(Hit.GetActor(), 
+						WeaponSetting.ProjectileSetting.ProjectileDamage, 
+						Hit.TraceStart, 
+						Hit, 
+						GetInstigatorController(), 
+						this, 
+						NULL);
+
+					/*UGameplayStatics::ApplyDamage(Hit.GetActor(),
 						WeaponSetting.ProjectileSetting.ProjectileDamage,
 						GetInstigatorController(),
 						this,
-						NULL);
+						NULL);*/
 				}
-
-
-
-
-				////////////////////////////////////////////////////////////////////////////////////////////////////
-				//MyTemplate
-
-				/*FRotator Rot;
-				FHitResult ResultHit;
-				FCollisionQueryParams TraceParams;
-				bool bIsHit;
-				bIsHit = GetWorld()->LineTraceSingleByChannel(
-						ResultHit,
-						SpawnLocation,
-						EndLocation,
-						ECC_Visibility,
-						TraceParams);
-
-				DrawDebugLine(GetWorld(), SpawnLocation, EndLocation, FColor::Red, false, 10.0f);
-				DrawDebugPoint(GetWorld(), ResultHit.ImpactPoint, 3.0f, FColor::Green, false, 10.0f);
-				
-				
-
-				if (bIsHit)
-				{
-					GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Trace Hit"));
-					
-				}*/
-				////////////////////////////////////////////////////////////////////////////////////////////////////
 			}
 		}
 	}

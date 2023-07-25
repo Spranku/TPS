@@ -143,15 +143,19 @@ void AProjectileDefault::BulletCollisionSphereHit(UPrimitiveComponent* HitComp, 
 				// Спавним, как обычные частицы
 				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), myParticle, FTransform(Hit.ImpactNormal.Rotation(), Hit.ImpactPoint, FVector(1.0f)));
 			}
-		}	
+		}
+
+		// PlaySound, если есть какой-то звук
+		if (ProjectileSetting.HitSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), ProjectileSetting.HitSound, Hit.ImpactPoint);
+		}
+		// Теперь обычные пули могут добавлять эффект
+		UType::AddEffecttBySurfaceType(Hit.GetActor(), ProjectileSetting.Effect, mySurfaceType);
 	}
-	// PlaySound, если есть какой-то звук
-	if (ProjectileSetting.HitSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ProjectileSetting.HitSound, Hit.ImpactPoint);
-	}
-	// добавлено ради эксперимента. 
-	UGameplayStatics::ApplyDamage(OtherActor, ProjectileSetting.ProjectileDamage, GetInstigatorController(), this, NULL);
+	 
+	UGameplayStatics::ApplyPointDamage(OtherActor, ProjectileSetting.ProjectileDamage, Hit.TraceStart, Hit, GetInstigatorController(), this, NULL);
+	
 	ImpactProjectile();
 }
 

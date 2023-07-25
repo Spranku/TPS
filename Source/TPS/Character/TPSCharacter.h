@@ -7,6 +7,8 @@
 #include <TPS/FunctionLibrary/Type.h>
 #include "Game/WeaponDefault.h"
 #include </My_Projects/TPS/Source/TPS/Character/TPSCharacterHealthComponent.h>
+#include "/My_Projects/TPS/Source/TPS/Interface/TPS_IGameActor.h"
+#include <TPS/Public/Game/TPS_StateEffect.h>
 #include "TPSCharacter.generated.h"
 
 
@@ -19,7 +21,7 @@
 //};
 
 UCLASS(Blueprintable)
-class ATPSCharacter : public ACharacter
+class ATPSCharacter : public ACharacter, public ITPS_IGameActor 
 {
 	GENERATED_BODY()
 protected:
@@ -29,7 +31,6 @@ public:
 
 	// Когда анимация смерти заканчивается, вкл таймер
 	FTimerHandle TimerHandle_RagDollTimer;
-
 
 	// Called every frame.
 	virtual void Tick(float DeltaSeconds) override;
@@ -82,7 +83,7 @@ public:
 	EMovementState MovementState = EMovementState::Run_State;
 	
 	// Добавление переменной для STRUCT из Type.h
-	// Ранее в Type.h мы создавали структуру FCharracterrSpeed.
+	// Ранее в Type.h мы создавали структуру FCharacterSpeed.
 	// Её необходимо указать здесь и назвать переменную MovementInfo
 	// Инициализация не нужна,т.к. она есть в Type.h
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -99,6 +100,11 @@ public:
 	// Массив с анимациями смертей 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 		TArray<UAnimMontage*> DeadsAnim;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability")
+		TSubclassOf<UTPS_StateEffect> AbilityEffect;
+
+	// Массив эффектов 
+	TArray<UTPS_StateEffect*> Effects;
 
 	// переменная таймера спринта
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -131,6 +137,8 @@ public:
 		void TrySwitchNextWeapon();
 	UFUNCTION()
 		void SwitchPreviosWeapon();
+
+	void TryAbilityEnabled();
 
 	// Переменные для инпутов
 	float AxisX = 0.0f;
@@ -186,6 +194,13 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	UDecalComponent* GetCursorToWorld();
+
+	// Interface
+	EPhysicalSurface GetSurfaceType() override;
+	TArray<UTPS_StateEffect*> GetAllCurrentEffects() override;
+	void RemoveEffect(UTPS_StateEffect* RemoveEffect) override;
+	void AddEffect(UTPS_StateEffect* newEffect) override;
+	// End Interface
 
 	// Ф-я отключения управления пешкой 
 	UFUNCTION(BlueprintCallable)

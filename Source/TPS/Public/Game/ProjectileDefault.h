@@ -32,7 +32,7 @@ public:
 		class UProjectileMovementComponent* BulletProjectileMovement = nullptr;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, /*meta = (AllowPrivateAccess = "true")*/ Category = Components)
 		class UAudioComponent* BulletSound = nullptr;
-	
+	UPROPERTY(BlueprintReadOnly)
 	 FProjectileInfo ProjectileSetting;
 	
 protected:

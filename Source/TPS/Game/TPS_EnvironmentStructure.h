@@ -4,10 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "/My_Projects/TPS/Source/TPS/Interface/TPS_IGameActor.h"
+#include <TPS/Public/Game/TPS_StateEffect.h>
 #include "TPS_EnvironmentStructure.generated.h"
 
 UCLASS()
-class TPS_API ATPS_EnvironmentStructure : public AActor
+class TPS_API ATPS_EnvironmentStructure : public AActor, public ITPS_IGameActor
 {
 	GENERATED_BODY()
 	
@@ -22,5 +24,14 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	EPhysicalSurface GetSurfaceType() override;
+
+	UPROPERTY(BlueprintReadOnly,EditDefaultsOnly)
+	TArray<UTPS_StateEffect*> Effects;
+
+	TArray<UTPS_StateEffect*> GetAllCurrentEffects() override;
+	void RemoveEffect(UTPS_StateEffect* RemoveEffect) override;
+	void AddEffect(UTPS_StateEffect* newEffect) override;
 
 };

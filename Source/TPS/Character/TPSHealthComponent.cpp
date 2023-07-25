@@ -14,7 +14,6 @@ UTPSHealthComponent::UTPSHealthComponent()
 	// ...
 }
 
-
 // Called when the game starts
 void UTPSHealthComponent::BeginPlay()
 {
@@ -23,7 +22,6 @@ void UTPSHealthComponent::BeginPlay()
 	// ...
 	
 }
-
 
 // Called every frame
 void UTPSHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -49,7 +47,7 @@ void UTPSHealthComponent::ChangeHealthValue(float ChangeValue)
 	// изменяемое значение на глобальный коэф. дамага
 	// Если он равен 2/3/4/5, то объект будет поглащать много урона
 	// А если он равен 5.0f, то выходит что объект бронирован в 2 раза
-	ChangeValue = ChangeValue * CoefDamage;
+	ChangeValue = ChangeValue*CoefDamage;
 
 	Health += ChangeValue;
 
@@ -64,7 +62,6 @@ void UTPSHealthComponent::ChangeHealthValue(float ChangeValue)
 			OnDead.Broadcast();
 		}
 	}
-
 	OnHealthChange.Broadcast(Health, ChangeValue);
 }
 

@@ -4,6 +4,7 @@
 
 #include <Kismet/BlueprintFunctionLibrary.h>
 #include "Engine/DataTable.h"
+#include </My_Projects/TPS/Source/TPS/Public/Game/TPS_StateEffect.h>
 #include "Type.generated.h"
 
 
@@ -103,28 +104,30 @@ struct FProjectileInfo
 	// Далее нужна обёртка TEnumAsByte - шаблон, который позволяет обернуть SurfaceType
 	// затем EPhysicalSurface - это тип поверхности (которых порядка 64 штук)
 	// По EPhysicalSurface нужен UMaterialInterface, назовём это HitDecals
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
 		TMap<TEnumAsByte<EPhysicalSurface>, UMaterialInterface*> HitDecals;
 	// Так же со звуком
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
 		USoundBase* HitSound = nullptr;
 	// И для эффекта попадания
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FX")
 		TMap<TEnumAsByte<EPhysicalSurface>, UParticleSystem*> HitFXs;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
+		TSubclassOf<class UTPS_StateEffect> Effect = nullptr;
 	//
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explode")
 		UParticleSystem* ExploseFX = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explode")
 		USoundBase* ExploseSound = nullptr;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explode")
 		float ProjectileMaxRadiusDamage = 200.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explode")
 		float ProjectileMinRadiusDamage = 200.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explode")
 		float ExploseMaxDamage = 40.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSetting")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explode")
 		float ExploseFalloffCoef = 1.0f;
 
 	 
@@ -356,4 +359,8 @@ class TPS_API UType : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 		
+public:
+	UFUNCTION(BlueprintCallable)
+	 static void AddEffecttBySurfaceType(AActor* TakeEffectActor, TSubclassOf<UTPS_StateEffect> AddEffectClass, EPhysicalSurface SurfaceType);
+
 };

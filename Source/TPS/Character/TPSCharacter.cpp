@@ -14,6 +14,8 @@
 #include <Kismet/KismetMathLibrary.h>
 #include "/My_Projects/TPS/Source/TPS/Game/TPSGameInstance.h"
 #include "/My_Projects/TPS/Source/TPS/Character/TPSInventoryComponent.h"
+#include <Game/ProjectileDefault.h>
+#include <PhysicalMaterials/PhysicalMaterial.h>
 #include "Engine/World.h"
 
 ATPSCharacter::ATPSCharacter()
@@ -160,6 +162,8 @@ void ATPSCharacter::SetupPlayerInputComponent(UInputComponent* NewInputComponent
 	
 	NewInputComponent->BindAction(TEXT("SwitchNextWeapon"), EInputEvent::IE_Pressed, this, &ATPSCharacter::TrySwitchNextWeapon);
 	NewInputComponent->BindAction(TEXT("SwitchPreviosWeapon"), EInputEvent::IE_Pressed, this, &ATPSCharacter::SwitchPreviosWeapon);
+
+	NewInputComponent->BindAction(TEXT("AbilityAction"), EInputEvent::IE_Pressed, this, &ATPSCharacter::TryAbilityEnabled);
 }
 
 void ATPSCharacter::InputAxisX(float Value)
@@ -233,6 +237,19 @@ void ATPSCharacter::SwitchPreviosWeapon()
 			if (InventoryComponent->SwitchWeaponToIndex(CurrentIndexWeapon - 1, OldIndex, OldInfo,false))
 			{
 			}
+		}
+	}
+}
+
+void ATPSCharacter::TryAbilityEnabled()
+{
+	if (AbilityEffect)
+	{
+		UTPS_StateEffect* NewEffect = NewObject<UTPS_StateEffect>(this, AbilityEffect);
+		// Проверка и инициализация
+		if (NewEffect)
+		{
+			NewEffect->InitObject(this);
 		}
 	}
 }
@@ -391,7 +408,7 @@ void ATPSCharacter::CharacterUpdate()
 	// Добавим переменную результирующей скорости
 	// c значением пусть будет 600
 	// Она понадобится для switch: будет ResSpeed
-	// заменятьт на MovementInfo, прии этом вытаскивая
+	// заменять на MovementInfo, прии этом вытаскивая
 	// нужные параметры
 	float ResSpeed = 600.0f;
 	
@@ -424,27 +441,14 @@ void ATPSCharacter::CharacterUpdate()
 	GetCharacterMovement()->MaxWalkSpeed = ResSpeed;
 }
 
-//void ATPSCharacter::ChangeMovementState(EMovementState NewMovementState)
-//{
-//	// В тело добавим условие:
-//	// Когда функция вызывается, то переменна принимает новое значение
-//	MovementState = NewMovementState;
-//
-//	// Здесь будет вызываться функция CharacterUpdate
-//	CharacterUpdate();
-//}
-
 void ATPSCharacter::ChangeMovementState()
 {
-	//APlayerController* myController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-
 	if (!WalkEnabled && !SprintRunEnabled && !AimEnabled)
 	{
 		// Включение поворота мыши после спринта
 		//ToggleMouseInput = true;
 		MovementState = EMovementState::Run_State;
 	}
-
 	else
 	{
 		if (SprintRunEnabled )//&& AxisX) // Вместо AxisX мне нужно подставить координаты курсора
@@ -655,6 +659,42 @@ UDecalComponent* ATPSCharacter::GetCursorToWorld()
 	return CurrentCursor;
 }
 
+// Реализация интерфейса
+EPhysicalSurface ATPSCharacter::GetSurfaceType()
+{
+	EPhysicalSurface Result = EPhysicalSurface::SurfaceType_Default;
+	if (CharHealthComponent)
+	{ // Проверка если у персонажа щит еще есть, то никакой эффект накладываться не будет
+		if (CharHealthComponent->GetCurrentShield() <= 0)
+		{
+			if (GetMesh())
+			{
+				UMaterialInterface* myMaterial = GetMesh()->GetMaterial(0);
+				if (myMaterial)
+				{
+					Result = myMaterial->GetPhysicalMaterial()->SurfaceType;
+				}
+			}
+		}
+	}
+	return Result;
+}
+
+TArray<UTPS_StateEffect*> ATPSCharacter::GetAllCurrentEffects()
+{
+	return Effects;
+}
+
+void ATPSCharacter::RemoveEffect(UTPS_StateEffect* RemoveEffect)
+{
+	Effects.Remove(RemoveEffect);
+}
+
+void ATPSCharacter::AddEffect(UTPS_StateEffect* newEffect)
+{
+	Effects.Add(newEffect);
+}
+
 void ATPSCharacter::CharDead()
 {
 	float TimeAnim = 0.0f;
@@ -693,6 +733,15 @@ float ATPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 		CharHealthComponent->ChangeHealthValue(-DamageAmount);
 	}
 
+	// Если дамаг идёт от RadialDamage то попробуем добавить эффект, если он есть
+	if (DamageEvent.IsOfType(FRadialDamageEvent::ClassID))
+	{
+		AProjectileDefault* myProjectile = Cast<AProjectileDefault>(DamageCauser);
+		if (myProjectile)
+		{
+			UType::AddEffecttBySurfaceType(this, myProjectile->ProjectileSetting.Effect, GetSurfaceType());
+		}
+	}
 	return ActualDamage;
 }
 
