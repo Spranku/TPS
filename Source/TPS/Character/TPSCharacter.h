@@ -140,6 +140,13 @@ public:
 
 	void TryAbilityEnabled();
 
+	// Шаблон функции
+	template<int32 Id>
+	void TKeyPressed()
+	{
+		TrySwitchWeaponToIndexByKeyInput(Id);
+	}
+
 	// Переменные для инпутов
 	float AxisX = 0.0f;
 	float AxisY = 0.0f;
@@ -168,14 +175,14 @@ public:
 	bool ToggleMouseInput = true;
 
 	// Функция, чтобы нельзя было получать доступ напрямую из BP
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, BlueprintPure)
 	AWeaponDefault* GetCurrentWeapon();
 	 
 	// Функция, которая спавнит оружие
 	UFUNCTION(BlueprintCallable)
 	void InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponAdditionalInfo,int32 NewCurrentIndexWeapon);
 	UFUNCTION(BlueprintCallable)
-	void TryReloadEvent();
+	void TryReloadWeapon();
 
 	// Функции делегатов перезарядки
 	UFUNCTION()
@@ -192,8 +199,18 @@ public:
 	UFUNCTION(BlueprintNativeEvent)
 		void WeaponFireStart_BP(UAnimMontage* Anim);
 
+	bool TrySwitchWeaponToIndexByKeyInput(int32 ToIndex);
+
+
+
 	UFUNCTION(BlueprintCallable)
-	UDecalComponent* GetCursorToWorld();
+		UDecalComponent* GetCursorToWorld();
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+		EMovementState GetMovementState();
+	//UFUNCTION(BlueprintCallable, BlueprintPure)
+	//	TArray<UTPS_StateEffect*> GetCurrentEffectsOnChar();
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+		int32 GetCurrentWeaponIndex();
 
 	// Interface
 	EPhysicalSurface GetSurfaceType() override;
@@ -210,5 +227,8 @@ public:
 		struct FDamageEvent const& DamageEvent, 
 		class AController* EventInstigator, 
 		AActor* DamageCauser) override;
+
+	UFUNCTION(BlueprintNativeEvent)
+	void CharDead_BP();
 };
 

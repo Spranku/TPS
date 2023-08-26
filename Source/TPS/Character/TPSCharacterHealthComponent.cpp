@@ -36,6 +36,7 @@ void UTPSCharacterHealthComponent::ChangeShieldValue(float ChangeValue)
 	// ѕрисвоение щиту значени€ текущего дамага
 	Shield += ChangeValue;
 
+	OnShieldChange.Broadcast(Shield, ChangeValue);
 	
 	// ≈сли щит вышел за границу 100, то вернуть обратно 100
 	if (Shield > 100.0f)
@@ -60,7 +61,6 @@ void UTPSCharacterHealthComponent::ChangeShieldValue(float ChangeValue)
 
 		GetWorld()->GetTimerManager().ClearTimer(TimerHandle_ShieldRecoveryRateTimer);
 	}
-	OnShieldChange.Broadcast(Shield, ChangeValue);
 }
 
 void UTPSCharacterHealthComponent::CoolDownShieldEnd()
@@ -92,4 +92,9 @@ void UTPSCharacterHealthComponent::RecovryShield()
 		Shield = tmp;
 	}
 	OnShieldChange.Broadcast(Shield, ShieldRecoveryValue); 
+}
+
+float UTPSCharacterHealthComponent::GetShieldValue()
+{
+	return Shield;
 }

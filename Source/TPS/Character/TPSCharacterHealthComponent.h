@@ -48,4 +48,7 @@ public:
 	void CoolDownShieldEnd();
 	// Ф-я восстановление щитов
 	void RecovryShield();
+
+	UFUNCTION(BlueprintCallable)
+		float GetShieldValue();
 };

@@ -78,29 +78,31 @@ public:
 
 	// Два важных массива для отображения в BP. Слоты оружия и типа патронов.
 	// Всё описано в Type файле
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
 		TArray<FWeaponSlot> WeaponSlots;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapons")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
 		TArray<FAmmoSlot> AmmoSlots;
 	// Информация для виджетов (ограничение на слоты)
 		int32 MaxSlotsWeapon = 0;
 
 	// Основная функция, которая пригодится в будущем. Аргументы: другой индекс, старый индекс, старая инфа
 	// OldInfo - патроны в текущем оружии
-	 bool SwitchWeaponToIndex(int32 ChangeToIndex, int32 OldIndex, FAdditionalWeaponInfo OldInfo, bool bIsForward);
+	 bool SwitchWeaponToIndexByNextPreviosIndex(int32 ChangeToIndex, int32 OldIndex, FAdditionalWeaponInfo OldInfo, bool bIsForward);
+
+	 bool SwitchWeaponByIndex(int32 IndexWeaponToChange, int32 PreviosIndex, FAdditionalWeaponInfo PreviosWeaponInfo);
 
 	// Дает инфо сколько патронов осталось по индексу
 	FAdditionalWeaponInfo GetAdditionalInfoWeapon(int32 IndexWeapon);
 
 	// Можно спросить у инвентаря: есть текущее оружие с таким именем, какой у него индекс? 
 	int32 GetWeaponIndexSlotByName(FName IdWeaponName);
-
+	// Вспоомгательные ф-ции добавленные после рефакторинга
+	bool GetWeaponTypeByIndexSlot(int32 IndexSlot, EWeaponType& WeaponType);
+	bool GetWeaponTypeByNameWeapon(FName IdWeaponName, EWeaponType& WeaponType);
 	// Ф-я которая вернет имя оружия по слоту
 	FName GetWeaponNameBySlotIndex(int32 IndexSlot);
-
 	// Записывает инфо по индексу
 	void SetAdditionalInfoWeapon(int32 IndexWeapon, FAdditionalWeaponInfo NewInfo);
-	
 	// Тип оружия и AmmoTaken - кол-во патронов, которые мы отобрали
 	UFUNCTION(BlueprintCallable)
 	void AmmoSlotChangeValue(EWeaponType TypeWeapon, int32 CoutChangeAmmo);
@@ -119,5 +121,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Interface")
 		bool GetDropItemInfoFromInventory(int32 IndexSlot, FDropItem &DropItemInfo);
 
+	UFUNCTION(BlueprintCallable, Category = "Inv")
+		TArray<FWeaponSlot> GetWeaponSlots();
+	UFUNCTION(BlueprintCallable, Category = "Inv")
+		TArray<FAmmoSlot> GetAmmoSlots();
 
+	UFUNCTION(BlueprintCallable, Category = "Inv")
+		void InitInventory(TArray<FWeaponSlot> NewWeaponSlotsInfo, TArray<FAmmoSlot> NewAmmoSlotsInfo);
 };
