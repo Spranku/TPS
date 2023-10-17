@@ -17,7 +17,7 @@ class TPS_API UTPS_StateEffect : public UObject
 	GENERATED_BODY()
 public:
 
-	virtual bool InitObject(AActor* Actor);
+	virtual bool InitObject(AActor* Actor, FName NameBoneHit);
 	//virtual void ExecuteEffect(float DeltaTime);
 	virtual void DestroyObject();
 	
@@ -39,7 +39,7 @@ class TPS_API UTPS_StateEffect_ExecuteOnce : public UTPS_StateEffect
 	GENERATED_BODY()
 
 public:
-	bool InitObject(AActor* Actor) override;
+	bool InitObject(AActor* Actor, FName NameBoneHit) override;
 	void DestroyObject() override;
 
 	virtual void ExecuteOnce();
@@ -56,7 +56,7 @@ class TPS_API UTPS_StateEffect_ExecuteTimer : public UTPS_StateEffect
 	GENERATED_BODY()
 
 public:
-	bool InitObject(AActor* Actor) override;
+	bool InitObject(AActor* Actor, FName NameBoneHit) override;
 	void DestroyObject() override;
 
 	virtual void Execute();
@@ -87,7 +87,7 @@ class TPS_API UTPS_StunEffect : public UTPS_StateEffect
 
 public:
 
-	bool InitObject(AActor* Actor) override;
+	bool InitObject(AActor* Actor, FName NameBoneHit) override;
 	void DestroyObject() override;
 	
 	void ExecuteStun();

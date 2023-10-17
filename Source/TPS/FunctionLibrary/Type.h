@@ -361,6 +361,6 @@ class TPS_API UType : public UBlueprintFunctionLibrary
 		
 public:
 	UFUNCTION(BlueprintCallable)
-	 static void AddEffecttBySurfaceType(AActor* TakeEffectActor, TSubclassOf<UTPS_StateEffect> AddEffectClass, EPhysicalSurface SurfaceType);
+	 static void AddEffecttBySurfaceType(AActor* TakeEffectActor,FName NameBoneHit, TSubclassOf<UTPS_StateEffect> AddEffectClass, EPhysicalSurface SurfaceType);
 
 };

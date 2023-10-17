@@ -357,7 +357,7 @@ void AWeaponDefault::Fire()
 							Hit.ImpactNormal);
 					}
 
-					UType::AddEffecttBySurfaceType(Hit.GetActor(), ProjectileInfo.Effect, mySurfaceType);
+					UType::AddEffecttBySurfaceType(Hit.GetActor(),Hit.BoneName, ProjectileInfo.Effect, mySurfaceType);
 
 					UGameplayStatics::ApplyPointDamage(Hit.GetActor(), 
 						WeaponSetting.ProjectileSetting.ProjectileDamage, 
@@ -366,12 +366,6 @@ void AWeaponDefault::Fire()
 						GetInstigatorController(), 
 						this, 
 						NULL);
-
-					/*UGameplayStatics::ApplyDamage(Hit.GetActor(),
-						WeaponSetting.ProjectileSetting.ProjectileDamage,
-						GetInstigatorController(),
-						this,
-						NULL);*/
 				}
 			}
 		}

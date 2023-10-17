@@ -8,7 +8,7 @@
 #include "/My_Projects/TPS/Source/TPS/Character/TPSCharacter.h"
 
 
-bool UTPS_StateEffect::InitObject(AActor* Actor)
+bool UTPS_StateEffect::InitObject(AActor* Actor, FName NameBoneHit)
 {
 	myActor = Actor;
 
@@ -41,9 +41,9 @@ void UTPS_StateEffect::DestroyObject()
 	
 }
 
-bool UTPS_StateEffect_ExecuteOnce::InitObject(AActor* Actor)
+bool UTPS_StateEffect_ExecuteOnce::InitObject(AActor* Actor, FName NameBoneHit)
 {
-	Super::InitObject(Actor);
+	Super::InitObject(Actor, NameBoneHit);
 	ExecuteOnce();
 	return true;
 }
@@ -67,9 +67,9 @@ void UTPS_StateEffect_ExecuteOnce::ExecuteOnce()
 	DestroyObject();
 }
 
-bool UTPS_StateEffect_ExecuteTimer::InitObject(AActor* Actor)
+bool UTPS_StateEffect_ExecuteTimer::InitObject(AActor* Actor, FName NameBoneHit)
 {
-	Super::InitObject(Actor);
+	Super::InitObject(Actor, NameBoneHit);
 
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle_EffectTimer, this, &UTPS_StateEffect_ExecuteTimer::DestroyObject, Timer, false);
 
@@ -79,16 +79,31 @@ bool UTPS_StateEffect_ExecuteTimer::InitObject(AActor* Actor)
 	// Если эффект есть,то присоединяем его к актору,котрый инициировался в начале
 	if (ParticleEffect)
 	{
-		FName NameBoneToAttached; // Место,куда хотим присоединить эффект;
-		FVector Location;		  // Место,куда хотим присоединить эффект;
+		FName NameBoneToAttached = NameBoneHit; // Место,куда хотим присоединить эффект;
+		FVector Location = FVector(0);		    // Место,куда хотим присоединить эффект;
 
-		ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(ParticleEffect,
-			myActor->GetRootComponent(), 
-			NameBoneToAttached,
-			Location,
-			FRotator::ZeroRotator,
-			EAttachLocation::SnapToTarget,
-			false);
+		USceneComponent* myMesh = Cast<USceneComponent>(myActor->GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+			if (myMesh)
+			{
+				ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(ParticleEffect,
+					/*myActor->GetRootComponent(),*/
+					myMesh,
+					NameBoneToAttached,
+					Location,
+					FRotator::ZeroRotator,
+					EAttachLocation::SnapToTarget,
+					false);
+			}
+			else
+			{
+				ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(ParticleEffect,
+					myActor->GetRootComponent(),
+					NameBoneToAttached,
+					Location,
+					FRotator::ZeroRotator,
+					EAttachLocation::SnapToTarget,
+					false);
+			}
 	}
 	return true;
 }
@@ -114,9 +129,9 @@ void UTPS_StateEffect_ExecuteTimer::Execute()
 	}
 }
 
-bool UTPS_StunEffect::InitObject(AActor* Actor)
+bool UTPS_StunEffect::InitObject(AActor* Actor,FName NameBoneHit)
 {
-	Super::InitObject(Actor);
+	Super::InitObject(Actor,NameBoneHit);
 	UE_LOG(LogTemp, Warning, TEXT("InitObject successful"));
 
 	ExecuteStun();

@@ -275,7 +275,7 @@ void ATPSCharacter::TryAbilityEnabled()
 		// Проверка и инициализация
 		if (NewEffect)
 		{
-			NewEffect->InitObject(this);
+			NewEffect->InitObject(this,NAME_None);
 		}
 	}
 }
@@ -809,7 +809,7 @@ float ATPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 		AProjectileDefault* myProjectile = Cast<AProjectileDefault>(DamageCauser);
 		if (myProjectile)
 		{
-			UType::AddEffecttBySurfaceType(this, myProjectile->ProjectileSetting.Effect, GetSurfaceType());
+			UType::AddEffecttBySurfaceType(this,NAME_None, myProjectile->ProjectileSetting.Effect, GetSurfaceType()); // To Do Name none - bone for radial damage
 		}
 	}
 	return ActualDamage;
