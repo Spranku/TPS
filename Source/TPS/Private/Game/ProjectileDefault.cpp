@@ -5,6 +5,7 @@
 #include <Kismet/GameplayStatics.h> 
 #include <PhysicalMaterials/PhysicalMaterial.h>
 #include "/My_Projects/TPS/Source/TPS/FunctionLibrary/Type.h"
+#include "/UE/UE_5.0/Engine/Source/Runtime/AIModule/Classes/Perception/AISense_Damage.h"
 
 // Sets default values
 AProjectileDefault::AProjectileDefault()
@@ -155,7 +156,7 @@ void AProjectileDefault::BulletCollisionSphereHit(UPrimitiveComponent* HitComp, 
 	}
 	 
 	UGameplayStatics::ApplyPointDamage(OtherActor, ProjectileSetting.ProjectileDamage, Hit.TraceStart, Hit, GetInstigatorController(), this, NULL);
-	
+	UAISense_Damage::ReportDamageEvent(GetWorld(), Hit.GetActor(), GetInstigator(), ProjectileSetting.ProjectileDamage, Hit.Location, Hit.Location);// to do shootgun trace,grenade
 	ImpactProjectile();
 }
 

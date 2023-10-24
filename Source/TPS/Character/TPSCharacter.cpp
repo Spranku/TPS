@@ -531,6 +531,11 @@ int32 ATPSCharacter::GetCurrentWeaponIndex()
 	return CurrentIndexWeapon;
 }
 
+bool ATPSCharacter::GetIsAlive()
+{
+	return bIsAlive;
+}
+
 // Эта функция теперь будет принимать ID Оружия
 void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponAdditionalInfo, int32 NewCurrentIndexWeapon)
 {
