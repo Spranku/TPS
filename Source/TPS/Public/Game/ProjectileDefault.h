@@ -45,6 +45,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	
 	// 
+	UFUNCTION(BlueprintCallable)
 	void InitProjectile(FProjectileInfo InitParam);
 
 	// Функции, которые отвечают за реакции на пулю. 

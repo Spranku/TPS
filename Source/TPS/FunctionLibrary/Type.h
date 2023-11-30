@@ -99,6 +99,8 @@ struct FProjectileInfo
 		float ProjectileLifeTime = 30.0f; // Жизнь пули
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
 		float ProjcetileInitSpeed = 2000.0f;       // Скорость пули
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ProjectileSettings")
+		float ProjcetileMaxSpeed = 2000.0f;
 
 	// TMap - массив, в котором есть контейнер и ключ к нему(value)
 	// Далее нужна обёртка TEnumAsByte - шаблон, который позволяет обернуть SurfaceType

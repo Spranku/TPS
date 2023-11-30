@@ -34,6 +34,11 @@ void AProjectileDefault_Grenade::TimerExplose(float DeltaTime)
 
 void AProjectileDefault_Grenade::BulletCollisionSphereHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	if (!TimerEnabled)
+	{
+		Explose();
+	}
+
 	Super::BulletCollisionSphereHit(HitComp, OtherActor, OtherComp, NormalImpulse, Hit);
 }
 
