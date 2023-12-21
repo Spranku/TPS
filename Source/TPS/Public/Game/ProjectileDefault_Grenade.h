@@ -13,7 +13,12 @@
 UCLASS()
 class TPS_API AProjectileDefault_Grenade : public AProjectileDefault
 {
+	
 	GENERATED_BODY()
+
+public:
+	AProjectileDefault_Grenade();
+
 protected:
 	virtual void BeginPlay() override;
 public:
@@ -38,4 +43,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grenade")
 	float TimeToExlose = 5.0f;
 	
+
+	/// /////////////////////////////// Это я писал сам, не факт что верно
+	UFUNCTION(NetMulticast, Reliable)
+	void ExploseFX_Multicast(UParticleSystem* FxTemplate, FVector Loc, FRotator Rot);
+	UFUNCTION(NetMulticast, Reliable)
+	void ExploseSound_Multicast(USoundBase* HitSound, FVector HitLoc);
 };

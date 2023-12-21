@@ -13,6 +13,8 @@ AProjectileDefault::AProjectileDefault()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	SetReplicates(true);
+
 	// Создаётся объект (сфер компонент)
 	BulletCollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("Collision Sphere"));
 
@@ -88,8 +90,7 @@ void AProjectileDefault::InitProjectile(FProjectileInfo InitParam)
 	// и если что удаляет не нужные компоненты, если они не используются00
 	if (InitParam.ProjectileStaticMesh)
 	{
-		BulletMesh->SetStaticMesh(InitParam.ProjectileStaticMesh);
-		BulletMesh->SetRelativeTransform(InitParam.ProjectileStaticMeshOffset);
+		InitVisualMeshProjectile_Multicast(InitParam.ProjectileStaticMesh, InitParam.ProjectileStaticMeshOffset);
 	}
 	else
 	{
@@ -98,8 +99,7 @@ void AProjectileDefault::InitProjectile(FProjectileInfo InitParam)
 
 	if (InitParam.ProjectileTrialFX)
 	{
-		BulletFX->SetTemplate(InitParam.ProjectileTrialFX);
-		BulletFX->SetRelativeTransform(InitParam.ProjectileTrialFxOffset);
+		InitVisualTrailProjectile_Multicast(InitParam.ProjectileTrialFX, InitParam.ProjectileTrialFxOffset);
 	}
 	else
 		BulletFX->DestroyComponent();
@@ -127,10 +127,7 @@ void AProjectileDefault::BulletCollisionSphereHit(UPrimitiveComponent* HitComp, 
 			// Далее проверка на материал: есть ли физический объект того, во что мы попали
 			if (myMaterial && OtherComp)
 			{
-				// Спавн декали. В аргументы передается: декаль, размер декали,
-				// то к чему аттачим, без костей(noname), ротацию (разворачиваем по нормали)
-				// В конце условие аттача:: и секунды (сколько живет декаль)
-				UGameplayStatics::SpawnDecalAttached(myMaterial, FVector(20.0f), OtherComp, NAME_None, Hit.ImpactPoint, Hit.ImpactNormal.Rotation(), EAttachLocation::KeepWorldPosition, 10.0f);
+				SpawnHitDecal_Multicast(myMaterial, OtherComp, Hit);
 			}
 		}
 		// То же делаем с HitFXs
@@ -141,15 +138,14 @@ void AProjectileDefault::BulletCollisionSphereHit(UPrimitiveComponent* HitComp, 
 			// Берем mySurfaceType
 			if (mySurfaceType)
 			{
-				// Спавним, как обычные частицы
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), myParticle, FTransform(Hit.ImpactNormal.Rotation(), Hit.ImpactPoint, FVector(1.0f)));
+				SpawnHitFX_Multicast(myParticle,Hit);
 			}
 		}
 
 		// PlaySound, если есть какой-то звук
 		if (ProjectileSetting.HitSound)
 		{
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), ProjectileSetting.HitSound, Hit.ImpactPoint);
+			SpawnHitSound_Multicast(ProjectileSetting.HitSound, Hit);
 		}
 		// Теперь обычные пули могут добавлять эффект
 		UType::AddEffecttBySurfaceType(Hit.GetActor(),Hit.BoneName, ProjectileSetting.Effect, mySurfaceType);
@@ -174,4 +170,36 @@ void AProjectileDefault::ImpactProjectile()
 {
 	// Когда включено - пули не рикошетят
 	//this->Destroy();
+}
+
+void AProjectileDefault::SpawnHitDecal_Multicast_Implementation(UMaterialInterface* DecalMaterial, UPrimitiveComponent* OtherComp, FHitResult HitResult)
+{
+	// Спавн декали. В аргументы передается: декаль, размер декали,
+	// то к чему аттачим, без костей(noname), ротацию (разворачиваем по нормали)
+	// В конце условие аттача:: и секунды (сколько живет декаль)
+	UGameplayStatics::SpawnDecalAttached(DecalMaterial, FVector(20.0f), OtherComp, NAME_None, HitResult.ImpactPoint, HitResult.ImpactNormal.Rotation(), EAttachLocation::KeepWorldPosition, 10.0f);
+}
+
+void AProjectileDefault::SpawnHitFX_Multicast_Implementation(UParticleSystem* FxTemplate, FHitResult HitResult)
+{
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FxTemplate, FTransform(HitResult.ImpactNormal.Rotation(), HitResult.ImpactPoint, FVector(1.0f)));
+}
+
+void AProjectileDefault::SpawnHitSound_Multicast_Implementation(USoundBase* HitSound, FHitResult HitResult)
+{
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, HitResult.ImpactPoint);
+}
+
+
+
+void AProjectileDefault::InitVisualMeshProjectile_Multicast_Implementation(UStaticMesh* newMesh, FTransform MeshRelative)
+{
+	BulletMesh->SetStaticMesh(newMesh);
+	BulletMesh->SetRelativeTransform(MeshRelative);
+}
+
+void AProjectileDefault::InitVisualTrailProjectile_Multicast_Implementation(UParticleSystem* NewTemplate, FTransform TemplateRelative)
+{
+	BulletFX->SetTemplate(NewTemplate);
+	BulletFX->SetRelativeTransform(TemplateRelative);
 }

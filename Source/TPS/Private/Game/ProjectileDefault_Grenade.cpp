@@ -4,6 +4,11 @@
 #include "Game/ProjectileDefault_Grenade.h"
 #include <Kismet/GameplayStatics.h> 
 
+AProjectileDefault_Grenade::AProjectileDefault_Grenade()
+{
+	SetReplicates(true);
+}
+
 void AProjectileDefault_Grenade::BeginPlay()
 {
 	Super::BeginPlay();
@@ -55,12 +60,18 @@ void AProjectileDefault_Grenade::Explose()
 	if (ProjectileSetting.ExploseFX)
 	{
 		// Спавн эффектa
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ProjectileSetting.ExploseFX, GetActorLocation(), GetActorRotation(), FVector(1.0f));
+		//UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ProjectileSetting.ExploseFX, GetActorLocation(), GetActorRotation(), FVector(1.0f));
+
+		/// /////////////////////////////// Это я писал сам, не факт что верно
+		ExploseFX_Multicast(ProjectileSetting.ExploseFX,GetActorLocation(),GetActorRotation());
 	}
 	// Проверка на звук
 	if (ProjectileSetting.ExploseSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ProjectileSetting.ExploseSound, GetActorLocation());
+		//UGameplayStatics::PlaySoundAtLocation(GetWorld(), ProjectileSetting.ExploseSound, GetActorLocation());
+
+		ExploseSound_Multicast(ProjectileSetting.ExploseSound, GetActorLocation());
+		/// /////////////////////////////// Это я писал сам, не факт что верно
 	}
 	// Функция ApplyRadialDamageWithFalloff - серверная функция, которая позволяет общаться со всеми
 	// В аргументах:
@@ -97,3 +108,18 @@ void AProjectileDefault_Grenade::Explose()
 	// После того как граната иниц. взрыв - она уничтожается
 	this->Destroy();
 }
+/// /////////////////////////////// Это я писал сам, не факт что верно
+void AProjectileDefault_Grenade::ExploseFX_Multicast_Implementation(UParticleSystem* FxTemplate, FVector Loc, FRotator Rot)
+{
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), 
+		FxTemplate,
+		Loc,
+		Rot,
+		FVector(1.0f));
+}
+
+void AProjectileDefault_Grenade::ExploseSound_Multicast_Implementation(USoundBase* HitSound, FVector HitLoc)
+{
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, HitLoc);
+}
+/// /////////////////////////////// Это я писал сам, не факт что верно

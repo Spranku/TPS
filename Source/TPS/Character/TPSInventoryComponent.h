@@ -126,6 +126,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inv")
 		TArray<FAmmoSlot> GetAmmoSlots();
 
-	UFUNCTION(BlueprintCallable, Category = "Inv")
-		void InitInventory(TArray<FWeaponSlot> NewWeaponSlotsInfo, TArray<FAmmoSlot> NewAmmoSlotsInfo);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Inv")
+		void InitInventory_OnServer(const TArray<FWeaponSlot>& NewWeaponSlotsInfo, const TArray<FAmmoSlot>& NewAmmoSlotsInfo);
 };

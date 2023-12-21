@@ -10,6 +10,7 @@
 #include </My_Projects/TPS/Source/TPS/Public/Game/ProjectileDefault.h>
 #include "WeaponDefault.generated.h"
 
+
 // Делегаты для перезарядки
 // Макрос DECLARE_DYNAMIC_MULTICAST_DELEGATE
 // В аргументы: Имя делегата, ССЫЛКУ на аним.монтаж и его название
@@ -47,7 +48,7 @@ public:
 	FWeaponInfo WeaponSetting;
 	// Еще одна структура. Информация в ней будет меняться
 	// Там будет храниться кол-во патронов в оружии
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WeaponInfo")
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "WeaponInfo")
 	FAdditionalWeaponInfo AdditionalWeaponInfo;
 
 protected:
@@ -76,16 +77,18 @@ public:
 		bool WeaponReloading = false; // Флаг на перезарядку
 	
 
-	UFUNCTION(BlueprintCallable)
-	void SetWeaponStateFire(bool bIsFire);
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void SetWeaponStateFire_OnServer(bool bIsFire);
 
 	bool CheckWeaponCanFire();
 
 	FProjectileInfo GetProjectile();
 
+
 	void Fire();
 
-	void UpdateStateWeapon(EMovementState NewMovementState);
+	UFUNCTION (Server, Reliable)
+	void UpdateStateWeapon_OnServer(EMovementState NewMovementState);
 	void ChangeDispersion();
 	//
 	void ChangeDispersionByShoot();
@@ -111,8 +114,8 @@ public:
 	void ShellDropTick(float DeltaTime);
 	void ClipDropTick(float DeltaTime);
 
-	UFUNCTION()
-		void InitDropMesh(UStaticMesh* DropMesh, 
+	UFUNCTION(Server, Reliable)
+		void InitDropMesh_OnServer(UStaticMesh* DropMesh, 
 			FTransform Offset, 
 			FVector DropImpulseDirection, 
 			float LifeTimeMesh, 
@@ -135,17 +138,39 @@ public:
 	float DropShellTimer = -1.0f;
 	
 	// Разброс
-	bool ShouldReduseDespersion = false;
+	//UPROPERTY(Replicated)
+	bool ShouldReduseDispersion = false;
 	float CurrentDispersion = 0.0f;
 	float CurrentDispersionMax = 1.0f;
 	float CurrentDispersionMin = 0.1f;
 	float CurrentDispersionRecoil = 0.1f;
 	float CurrentDispersionReduction = 0.1f;
 
+	UPROPERTY(Replicated)
 	FVector ShootEndLocation = FVector(0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
 		bool  ShowDebug = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
 	    float SizeVectorToChangeShootDirectionLogic = 100.0f;;
 	
+	UFUNCTION(Server, Unreliable)
+		void UpdateWeaponByCharacterMovementStateOnServer(FVector NewShootEndLocation, bool NewShouldReduceDispersion);
+
+	UFUNCTION(NetMulticast, Unreliable)
+		void AnimWeaponStart_Multicast(UAnimMontage* Anim);
+	UFUNCTION(NetMulticast, Unreliable)
+		void ShellDropFire_Multicast(UStaticMesh* DropMesh, 
+			FTransform Offset, FVector DropImpulseDirection, 
+			float LifeTimeMesh, 
+			float ImpulseRandomDispersion, 
+			float PowerImpulse, 
+			float CustomMass,
+			FVector LocalDir);
+	UFUNCTION(NetMulticast, Unreliable)
+		void FXWeaponFire_Multicast(UParticleSystem* FxFire, USoundBase* SoundFire);
+	/// /////////////////////////////// Это я писал сам, не факт что верно
+	UFUNCTION(NetMulticast, Reliable)
+		void TraceFX_Multicast(UParticleSystem* FxTemplate, FHitResult HitResult);
+	UFUNCTION(NetMulticast, Reliable)
+		void TraceSound_Multicast(USoundBase* HitSound, FHitResult HitResult);
 };

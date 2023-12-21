@@ -79,7 +79,8 @@ public:
 	// Добаввление переменной для ENUM
 	// По умолчанию она будет Run. Чтобы использовать ее в BP
 	// необходим так же макрос
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(Replicated)
 	EMovementState MovementState = EMovementState::Run_State;
 	
 	// Добавление переменной для STRUCT из Type.h
@@ -111,6 +112,7 @@ public:
 	int SprintTime = 0;
 
 	// Оружие, которым владеет наш персонаж	
+	UPROPERTY(Replicated)
 	AWeaponDefault* CurrentWeapon = nullptr;
 	//for demo 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Demo")
@@ -232,5 +234,16 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent)
 	void CharDead_BP();
+
+	// Network
+	UFUNCTION(Server, Unreliable)
+		void SetActorRotationByYaw_OnServer(float Yaw);
+	UFUNCTION(NetMulticast, Unreliable)
+		void SetActorRotationByYaw_Multicast(float Yaw);
+
+	UFUNCTION(Server, Reliable)
+		void SetMovementState_OnServer(EMovementState NewState);
+	UFUNCTION(NetMulticast, Reliable)
+		void SetMovementState_Multicast(EMovementState NewState);
 };
 

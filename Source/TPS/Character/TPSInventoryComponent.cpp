@@ -537,7 +537,7 @@ TArray<FAmmoSlot> UTPSInventoryComponent::GetAmmoSlots()
 	return AmmoSlots;
 }
 
-void UTPSInventoryComponent::InitInventory(TArray<FWeaponSlot> NewWeaponSlotsInfo, TArray<FAmmoSlot> NewAmmoSlotsInfo)
+void UTPSInventoryComponent::InitInventory_OnServer_Implementation(const TArray<FWeaponSlot>& NewWeaponSlotsInfo, const TArray<FAmmoSlot>& NewAmmoSlotsInfo)
 {
 	// Записываем слоты на новые
 	WeaponSlots = NewWeaponSlotsInfo;
@@ -548,19 +548,7 @@ void UTPSInventoryComponent::InitInventory(TArray<FWeaponSlot> NewWeaponSlotsInf
 	// Чтобы когда происходила иниц. инвентаря, в инвентаре появлялось корректное оружие
 	// с запасом патронов. Если что то заполнено не правильно - это удаляется
 	//
-	for (int i = 0; i < WeaponSlots.Num(); i++)
-	{
-		UTPSGameInstance* myGI = Cast<UTPSGameInstance>(GetWorld()->GetGameInstance());
-		if (myGI)
-		{
-			if (!WeaponSlots[i].NameItem.IsNone())
-			{
-				//FWeaponInfo Info;
-				//if (myGI->GetWeaponInfoByName(WeaponSlots[i].NameItem, Info))
-					//WeaponSlots[i].AdditionalInfo.Round = Info.MaxRound;
-			}
-		}
-	}
+
 	MaxSlotsWeapon = WeaponSlots.Num();
 
 	// Далее происходит делегат
