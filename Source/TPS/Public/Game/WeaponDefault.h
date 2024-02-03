@@ -8,6 +8,7 @@
 #include "/My_Projects/TPS/Source/TPS/FunctionLibrary/Type.h"
 #include "Components/ArrowComponent.h"
 #include </My_Projects/TPS/Source/TPS/Public/Game/ProjectileDefault.h>
+#include "/UE/UE_5.0/Engine/Source/Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include "WeaponDefault.generated.h"
 
 
@@ -73,7 +74,7 @@ public:
 	// Булевая переменная, отвечающая за возможность стрельбы
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FireLogic")
 		bool WeaponFiring = false;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ReloadLogic")
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "ReloadLogic")
 		bool WeaponReloading = false; // Флаг на перезарядку
 	
 

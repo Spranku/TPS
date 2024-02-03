@@ -18,6 +18,8 @@
 #include </My_Projects/TPS/Source/TPS/TPS.h>
 #include "/UE/UE_5.0/Engine/Source/Runtime/Engine/Public/Net/UnrealNetwork.h"
 #include <PhysicalMaterials/PhysicalMaterial.h>
+#include "/UE/UE_5.0/Engine/Source/Runtime/Engine/Classes/Particles/ParticleSystemComponent.h"
+#include "/UE/UE_5.0/Engine/Source/Runtime/Engine/Classes/Engine/ActorChannel.h"
 #include "Engine/World.h"
 
 ATPSCharacter::ATPSCharacter()
@@ -211,7 +213,7 @@ void ATPSCharacter::InputAxisY(float Value)
 
 void ATPSCharacter::InputAttackPressed()
 {
-	if (bIsAlive)
+	if (CharHealthComponent && CharHealthComponent->GetIsAlive())
 	{
 		AttackCharEvent(true);
 	}
@@ -292,7 +294,7 @@ void ATPSCharacter::TryAbilityEnabled()
 
 void ATPSCharacter::MovementTick(float DeltaTime)
 {
-	if (bIsAlive)
+	if (CharHealthComponent && CharHealthComponent->GetIsAlive())
 	{
 		if (GetController () && GetController()->IsLocalPlayerController())
 		{
@@ -565,7 +567,12 @@ int32 ATPSCharacter::GetCurrentWeaponIndex()
 
 bool ATPSCharacter::GetIsAlive()
 {
-	return bIsAlive;
+	bool result = false;
+	if (CharHealthComponent)
+	{
+		result = CharHealthComponent->GetIsAlive();
+	}	
+	return result;
 }
 
 // Эта функция теперь будет принимать ID Оружия
@@ -581,6 +588,8 @@ void ATPSCharacter::InitWeapon(FName IdWeaponName, FAdditionalWeaponInfo WeaponA
 		CurrentWeapon->Destroy();
 		CurrentWeapon = nullptr;
 	}
+
+
 	// Нужно взять гейм инстанс и сделать каст на него
 	// Когда будет вызываться эта ф-я, будет давать наш BP_GameInstance 
 	UTPSGameInstance* myGI = Cast<UTPSGameInstance>(GetGameInstance());
@@ -671,14 +680,9 @@ void ATPSCharacter::TryReloadWeapon()
 {
 
 	// Сперва проверяем что у персонажа есть текущее оружие и оно не перезаряжается
-	if (bIsAlive && CurrentWeapon && !CurrentWeapon->WeaponReloading)
+	if (CharHealthComponent && CharHealthComponent->GetIsAlive() && CurrentWeapon && !CurrentWeapon->WeaponReloading)
 	{
-		// Если текущее кол-во патронов больше? или равно максимальному количеству,
-		// то вызываем ф-ю инициализации перезарядки
-		if (CurrentWeapon->GetWeaponRound() < CurrentWeapon->WeaponSetting.MaxRound && CurrentWeapon->CheckCanWeaponReload())
-		{
-			CurrentWeapon->InitReload();
-		}
+		TryReloadWeapon_OnServer();
 	}
 
 }
@@ -729,7 +733,7 @@ void ATPSCharacter::WeaponFireStart_BP_Implementation(UAnimMontage* Anim)
 	// in BP
 }
 
-bool ATPSCharacter::TrySwitchWeaponToIndexByKeyInput(int32 ToIndex)
+void ATPSCharacter::TrySwitchWeaponToIndexByKeyInput_OnServer_Implementation(int32 ToIndex)
 {
 	bool bIsSuccess = false;
 
@@ -749,7 +753,6 @@ bool ATPSCharacter::TrySwitchWeaponToIndexByKeyInput(int32 ToIndex)
 			bIsSuccess = InventoryComponent->SwitchWeaponByIndex(ToIndex, OldIndex, OldInfo);
 		}
 	}
-	return false;
 }
 
 UDecalComponent* ATPSCharacter::GetCursorToWorld()
@@ -783,51 +786,99 @@ TArray<UTPS_StateEffect*> ATPSCharacter::GetAllCurrentEffects()
 	return Effects;
 }
 
-void ATPSCharacter::RemoveEffect(UTPS_StateEffect* RemoveEffect)
+void ATPSCharacter::RemoveEffect_Implementation(UTPS_StateEffect* RemoveEffect)
 {
 	Effects.Remove(RemoveEffect);
+
+	if (!RemoveEffect->bIsAutoDestroyParticleEffect)
+	{
+		SwitchEffect(RemoveEffect, false);
+		EffectRemove = RemoveEffect;
+	}
 }
 
-void ATPSCharacter::AddEffect(UTPS_StateEffect* newEffect)
+void ATPSCharacter::AddEffect_Implementation(UTPS_StateEffect* newEffect)
 {
 	Effects.Add(newEffect);
+
+	if (!newEffect->bIsAutoDestroyParticleEffect)
+	{
+		SwitchEffect(newEffect, true);
+		EffectAdd = newEffect;
+	}
+	else
+	{
+		if (newEffect->ParticleEffect)
+		{
+			ExecuteEffectAdded_OnServer(newEffect->ParticleEffect);
+		}
+	}
+}
+
+void ATPSCharacter::PlayAnim_Multicast_Implementation(UAnimMontage* Anim)
+{
+	if (GetMesh() && GetMesh()->GetAnimInstance())
+	{
+		GetMesh()->GetAnimInstance()->Montage_Play(Anim);
+	}
+	
 }
 
 void ATPSCharacter::CharDead()
 {
-	float TimeAnim = 0.0f;
-	// Ф-я возвращает между 0 и числом которое поставили
-	int32 rnd = FMath::RandHelper(DeadsAnim.Num());
-	if (DeadsAnim.IsValidIndex(rnd) && DeadsAnim[rnd] && GetMesh() && GetMesh()->GetAnimInstance())
-	{
-		TimeAnim = DeadsAnim[rnd]->GetPlayLength();
-		GetMesh()->GetAnimInstance()->Montage_Play(DeadsAnim[rnd]);
-	}
-	bIsAlive = false;
-
-	if (GetController())
-	{
-		GetController()->UnPossess();
-	}
-
-	UnPossessed();
-
-	// Таймер на время проигрывания анимации смерти,после нее вызовется ф-я ниже
-	GetWorldTimerManager().SetTimer(TimerHandle_RagDollTimer, this, &ATPSCharacter::EnableRagDoll, TimeAnim, false);
-
-	//GetCursorToWorld()->SetVisibility(false); приводит к ошибке
-
-	// Персонаж умер, стрельба не возможна
-	AttackCharEvent(false);
-	
-
 	CharDead_BP();
+
+	if (HasAuthority())
+	{
+		float TimeAnim = 0.0f;
+		// Ф-я возвращает между 0 и числом которое поставили
+		int32 rnd = FMath::RandHelper(DeadsAnim.Num());
+		if (DeadsAnim.IsValidIndex(rnd) && DeadsAnim[rnd] && GetMesh() && GetMesh()->GetAnimInstance())
+		{
+			TimeAnim = DeadsAnim[rnd]->GetPlayLength();
+			//GetMesh()->GetAnimInstance()->Montage_Play(DeadsAnim[rnd]);
+			PlayAnim_Multicast(DeadsAnim[rnd]);
+		}
+		//bIsAlive = false;
+
+		if (GetController())
+		{
+			GetController()->UnPossess();
+		}
+		// Таймер на время проигрывания анимации смерти,после нее вызовется ф-я ниже
+		GetWorldTimerManager().SetTimer(TimerHandle_RagDollTimer, this, &ATPSCharacter::EnableRagdoll_Multicast, TimeAnim, false);
+
+		SetLifeSpan(20.0f);
+
+		if(GetCurrentWeapon())
+		{
+			GetCurrentWeapon()->SetLifeSpan(20.0f);
+		}
+	}
+	else
+	{
+		if (GetCursorToWorld())
+		{
+			GetCursorToWorld()->SetVisibility(false);
+		}
+		//GetCursorToWorld()->SetVisibility(false); приводит к ошибке
+
+		// Персонаж умер, стрельба невозможна
+		AttackCharEvent(false);
+	}
+
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	}
 }
 
-void ATPSCharacter::EnableRagDoll()
+void ATPSCharacter::EnableRagdoll_Multicast_Implementation()
 {
 	if (GetMesh())
 	{
+		GetMesh()->SetCollisionObjectType(ECC_PhysicsBody);
+		GetMesh()->SetCollisionResponseToChannel(ECC_Pawn, ECollisionResponse::ECR_Block);
 		GetMesh()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
 		GetMesh()->SetSimulatePhysics(true);
 	}
@@ -836,10 +887,10 @@ void ATPSCharacter::EnableRagDoll()
 float ATPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	if (bIsAlive)
+	if (CharHealthComponent && CharHealthComponent->GetIsAlive())
 	{
 		//CharHealthComponent->ChangeCurrentHealth(-DamageAmount);
-		CharHealthComponent->ChangeHealthValue(-DamageAmount);
+		CharHealthComponent->ChangeHealthValue_OnServer(-DamageAmount);
 	}
 
 	// Если дамаг идёт от RadialDamage то попробуем добавить эффект, если он есть
@@ -852,6 +903,27 @@ float ATPSCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 		}
 	}
 	return ActualDamage;
+}
+
+bool ATPSCharacter::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
+{
+	bool Wrote = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+
+    for (int32 i=0; i < Effects.Num(); i++)
+	{
+		if (Effects[i])	{ Wrote |= Channel->ReplicateSubobject(Effects[i], *Bunch, *RepFlags);}
+	}
+	return Wrote;
+}
+
+void ATPSCharacter::TryReloadWeapon_OnServer_Implementation()
+{
+	// Если текущее кол-во патронов больше? или равно максимальному количеству,
+		// то вызываем ф-ю инициализации перезарядки
+	if (CurrentWeapon->GetWeaponRound() < CurrentWeapon->WeaponSetting.MaxRound && CurrentWeapon->CheckCanWeaponReload())
+	{
+		CurrentWeapon->InitReload();
+	}
 }
 
 void ATPSCharacter::SetActorRotationByYaw_OnServer_Implementation(float Yaw)
@@ -889,9 +961,103 @@ void ATPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 
 	DOREPLIFETIME(ATPSCharacter, MovementState);
 	DOREPLIFETIME(ATPSCharacter, CurrentWeapon);
+	DOREPLIFETIME(ATPSCharacter, CurrentIndexWeapon);
+	DOREPLIFETIME(ATPSCharacter, Effects);
+	DOREPLIFETIME(ATPSCharacter, EffectAdd);
+	DOREPLIFETIME(ATPSCharacter, EffectRemove);
 }
 
+void ATPSCharacter::EffectAdd_OnRep()
+{
+	if (EffectAdd)
+	{
+		SwitchEffect(EffectAdd, true);
+	}
+	
+}
 
+void ATPSCharacter::EffectRemove_OnRep()
+{
+	//Effects.Remove(EffectRemove);
 
+	if (EffectRemove)
+	{
+		SwitchEffect(EffectRemove,true);
+	}
+}
 
+void ATPSCharacter::ExecuteEffectAdded_OnServer_Implementation(UParticleSystem* ExecuteFX)
+{
+	ExecuteEffectAdded_Multicast(ExecuteFX);
+}
 
+void ATPSCharacter::ExecuteEffectAdded_Multicast_Implementation(UParticleSystem* ExecuteFX)
+{
+	UType::ExecuteEffectAdded(ExecuteFX, this, FVector(0), FName("Spine_01"));
+}
+
+void ATPSCharacter::SwitchEffect(UTPS_StateEffect* Effect, bool bIsAdd)
+{
+
+	if (bIsAdd)
+	{
+		if (Effect && Effect->ParticleEffect)
+		{
+			FName NameBoneToAttached = Effect->NameBone;
+			FVector Loc = FVector(0);
+
+			USkeletalMeshComponent* myMesh = GetMesh();
+			if (myMesh)
+			{
+				UParticleSystemComponent* newParticleSystem = UGameplayStatics::SpawnEmitterAttached(Effect->ParticleEffect,
+								/*myActor->GetRootComponent(),*/
+								myMesh,
+								NameBoneToAttached,
+								Loc,
+								FRotator::ZeroRotator,
+								EAttachLocation::SnapToTarget,
+								false);
+
+				PartycleSystemEffects.Add(newParticleSystem);
+			}
+		}
+	}
+	else
+	{
+		if (Effect && Effect->ParticleEffect)
+		{
+			int32 i = 0;
+			bool bIsFind = false;
+
+			if (PartycleSystemEffects.Num() > 0)
+			{
+				while (i < PartycleSystemEffects.Num() && !bIsFind)
+				{
+					if (PartycleSystemEffects[i]->Template && Effect->ParticleEffect && Effect->ParticleEffect == PartycleSystemEffects[i]->Template)
+					{
+						bIsFind = true;
+						PartycleSystemEffects[i]->DeactivateSystem();
+						PartycleSystemEffects[i]->DestroyComponent();
+						PartycleSystemEffects.RemoveAt(i);
+					}
+					i++;
+				}
+			}
+
+			/*if (PartycleSystemEffects.Num() > 0)
+			{
+				while (i < PartycleSystemEffects.Num(), !bIsFind)
+				{
+					if (PartycleSystemEffects[i]->Template && Effect->ParticleEffect && Effect->ParticleEffect == PartycleSystemEffects[i]->Template)
+					{
+						bIsFind = true;
+						PartycleSystemEffects[i]->DeactivateSystem();
+						PartycleSystemEffects[i]->DestroyComponent();
+						PartycleSystemEffects.RemoveAt(i);
+					}
+					i++;
+				}
+			}*/
+		}
+	}
+}

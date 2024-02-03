@@ -16,6 +16,11 @@ class TPS_API UTPS_StateEffect : public UObject
 {
 	GENERATED_BODY()
 public:
+	// Запись говорящая о том, что объект реплицируется в конструкторе
+    bool IsSupportedForNetworking() const override { return true; };
+	
+	// Возможно этой строки не хватает, чтобы заработало. Но проверять желания нет
+	//bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 
 	virtual bool InitObject(AActor* Actor, FName NameBoneHit);
 	//virtual void ExecuteEffect(float DeltaTime);
@@ -26,10 +31,26 @@ public:
 	// Массив типов покрытия, способных к взаимодействию
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Setting")
 		TArray<TEnumAsByte<EPhysicalSurface>> PossibleInteractSurface;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setting")
 		bool bIsStakable = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setting ExecuteTimer")
+		bool bIsAutoDestroyParticleEffect = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setting ExecuteTimer")
+		UParticleSystem* ParticleEffect = nullptr;
+	 //Ссылка на компонент эффекта, чтобы уничтожить его когда он должен уничтожиться
+	 // Надо убрать?
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setting ExecuteTimer")
+		UParticleSystemComponent* ParticleEmmiter = nullptr;
+
 	AActor* myActor = nullptr;
+
+	//UPROPERTY(Replicated)
+		FName NameBone;
+	
+	UFUNCTION(NetMUlticast, Reliable)
+		void FXSpawnByStateEffect_Multicast(UParticleSystem* Effect, FName NameBoneHit);
 };
 
 // Класс эффектов, отрабатывающих один раз
@@ -74,10 +95,7 @@ public:
 	FTimerHandle TimerHandle_ExecuteTimer;
 	FTimerHandle TimerHandle_EffectTimer;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings Execute Effect")
-	UParticleSystem* ParticleEffect = nullptr;
-	// Ссылка на компонент эффекта, чтобы уничтожить его когда он должен уничтожиться
-	UParticleSystemComponent* ParticleEmmiter = nullptr;
+	
 };
 
 UCLASS()
@@ -114,10 +132,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings Execute Montage")
 		UAnimMontage* StunAnim;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings Execute Effect")
-		UParticleSystem* ParticleEffect = nullptr;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings Execute Effect")
+	//	UParticleSystem* ParticleEffect = nullptr;
 
-	UParticleSystemComponent* ParticleEmmiter = nullptr;
+	//UParticleSystemComponent* ParticleEmmiter = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings Execute Sound")
 		USoundBase* StunSound = nullptr;

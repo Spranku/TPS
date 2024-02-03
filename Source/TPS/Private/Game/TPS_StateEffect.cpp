@@ -6,18 +6,21 @@
 #include "/My_Projects/TPS/Source/TPS/Interface/TPS_IGameActor.h"
 #include <Kismet/GameplayStatics.h> 
 #include "/My_Projects/TPS/Source/TPS/Character/TPSCharacter.h"
+#include "/UE/UE_5.0/Engine/Source/Runtime/Engine/Public/Net/UnrealNetwork.h"
 
 
 bool UTPS_StateEffect::InitObject(AActor* Actor, FName NameBoneHit)
 {
 	myActor = Actor;
 
+	NameBone = NameBoneHit;
+
 	ITPS_IGameActor* myInterface = Cast<ITPS_IGameActor>(myActor);
 	if (myInterface)
 	{
-		myInterface->AddEffect(this);
+		myInterface->Execute_AddEffect(myActor ,this);
 	}
-
+	
 	return true;
 }
 
@@ -27,7 +30,7 @@ void UTPS_StateEffect::DestroyObject()
 
 	if (myInterface)
 	{
-		myInterface->RemoveEffect(this);
+		myInterface->Execute_RemoveEffect(myActor,this);
 	}
 
 	// Перед уничтожение объекта чистятся ссылки
@@ -39,6 +42,39 @@ void UTPS_StateEffect::DestroyObject()
 		this->ConditionalBeginDestroy();
 	}
 	
+}
+
+void UTPS_StateEffect::FXSpawnByStateEffect_Multicast_Implementation(UParticleSystem* Effect, FName NameBoneHit)
+{
+	// Если эффект есть,то присоединяем его к актору,котрый инициировался в начале
+	//if (Effect)
+	//{
+	//	FName NameBoneToAttached = NameBoneHit; // Место,куда хотим присоединить эффект;
+	//	FVector Location = FVector(0);		    // Место,куда хотим присоединить эффект;
+
+	//	USceneComponent* myMesh = Cast<USceneComponent>(myActor->GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	//	if (myMesh)
+	//	{
+	//		ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(Effect,
+	//			/*myActor->GetRootComponent(),*/
+	//			myMesh,
+	//			NameBoneToAttached,
+	//			Location,
+	//			FRotator::ZeroRotator,
+	//			EAttachLocation::SnapToTarget,
+	//			false);
+	//	}
+	//	else
+	//	{
+	//		ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(Effect,
+	//			myActor->GetRootComponent(),
+	//			NameBoneToAttached,
+	//			Location,
+	//			FRotator::ZeroRotator,
+	//			EAttachLocation::SnapToTarget,
+	//			false);
+	//	}
+	//}
 }
 
 bool UTPS_StateEffect_ExecuteOnce::InitObject(AActor* Actor, FName NameBoneHit)
@@ -61,7 +97,7 @@ void UTPS_StateEffect_ExecuteOnce::ExecuteOnce()
 		UTPSHealthComponent* myHealthComp = Cast<UTPSHealthComponent>(myActor->GetComponentByClass(UTPSHealthComponent::StaticClass()));
 		if (myHealthComp)
 		{
-			myHealthComp->ChangeHealthValue(Power);
+			myHealthComp->ChangeHealthValue_OnServer(Power);
 		}
 	}
 	DestroyObject();
@@ -71,47 +107,60 @@ bool UTPS_StateEffect_ExecuteTimer::InitObject(AActor* Actor, FName NameBoneHit)
 {
 	Super::InitObject(Actor, NameBoneHit);
 
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle_EffectTimer, this, &UTPS_StateEffect_ExecuteTimer::DestroyObject, Timer, false);
-
-	// Создание зацикленного таймера,который отрабатывает каждую секунду.
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle_ExecuteTimer, this, &UTPS_StateEffect_ExecuteTimer::Execute, RateTime, true);
-	
-	// Если эффект есть,то присоединяем его к актору,котрый инициировался в начале
-	if (ParticleEffect)
+	if (GetWorld())
 	{
-		FName NameBoneToAttached = NameBoneHit; // Место,куда хотим присоединить эффект;
-		FVector Location = FVector(0);		    // Место,куда хотим присоединить эффект;
-
-		USceneComponent* myMesh = Cast<USceneComponent>(myActor->GetComponentByClass(USkeletalMeshComponent::StaticClass()));
-			if (myMesh)
-			{
-				ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(ParticleEffect,
-					/*myActor->GetRootComponent(),*/
-					myMesh,
-					NameBoneToAttached,
-					Location,
-					FRotator::ZeroRotator,
-					EAttachLocation::SnapToTarget,
-					false);
-			}
-			else
-			{
-				ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(ParticleEffect,
-					myActor->GetRootComponent(),
-					NameBoneToAttached,
-					Location,
-					FRotator::ZeroRotator,
-					EAttachLocation::SnapToTarget,
-					false);
-			}
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle_EffectTimer, this, &UTPS_StateEffect_ExecuteTimer::DestroyObject, Timer, false);
+		// Создание зацикленного таймера,который отрабатывает каждую секунду.
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle_ExecuteTimer, this, &UTPS_StateEffect_ExecuteTimer::Execute, RateTime, true);
 	}
+
+	//if (ParticleEffect)
+	//{
+		// FXSpawnByStateEffect_Multicast(ParticleEffect,NameBoneHit); //To Remove
+	//}
+	
+
+	// Если эффект есть,то присоединяем его к актору,котрый инициировался в начале
+	//if (ParticleEffect)
+	//{
+	//	FName NameBoneToAttached = NameBoneHit; // Место,куда хотим присоединить эффект;
+	//	FVector Location = FVector(0);		    // Место,куда хотим присоединить эффект;
+
+	//	USceneComponent* myMesh = Cast<USceneComponent>(myActor->GetComponentByClass(USkeletalMeshComponent::StaticClass()));
+	//		if (myMesh)
+	//		{
+	//			ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(ParticleEffect,
+	//				/*myActor->GetRootComponent(),*/
+	//				myMesh,
+	//				NameBoneToAttached,
+	//				Location,
+	//				FRotator::ZeroRotator,
+	//				EAttachLocation::SnapToTarget,
+	//				false);
+	//		}
+	//		else
+	//		{
+	//			ParticleEmmiter = UGameplayStatics::SpawnEmitterAttached(ParticleEffect,
+	//				myActor->GetRootComponent(),
+	//				NameBoneToAttached,
+	//				Location,
+	//				FRotator::ZeroRotator,
+	//				EAttachLocation::SnapToTarget,
+	//				false);
+	//		}
+	//}
 	return true;
 }
 
 void UTPS_StateEffect_ExecuteTimer::DestroyObject()
 {
-	ParticleEmmiter->DestroyComponent();
-	ParticleEmmiter = nullptr;
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
+	}
+
+	//ParticleEmmiter->DestroyComponent();
+	//ParticleEmmiter = nullptr;
 
 	Super::DestroyObject();
 }
@@ -124,7 +173,7 @@ void UTPS_StateEffect_ExecuteTimer::Execute()
 		UTPSHealthComponent* myHealthComp = Cast<UTPSHealthComponent>(myActor->GetComponentByClass(UTPSHealthComponent::StaticClass()));
 		if (myHealthComp)
 		{
-			myHealthComp->ChangeHealthValue(Power);
+			myHealthComp->ChangeHealthValue_OnServer(Power);
 		}
 	}
 }
@@ -177,7 +226,11 @@ void UTPS_StunEffect::ExecuteStun()
 	{
 		// Отключение инпута персонажа
 		newChar->DisableInput(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-		newChar->bIsAlive = false;
+
+		//newChar->bIsAlive = false;
+		
+		bool newAlive = false;
+		newAlive = newChar->CharHealthComponent->GetIsAlive();
 
 		// Анимация стана 
 		newChar->PlayAnimMontage(StunAnim,0.2f);
@@ -193,11 +246,21 @@ void UTPS_StunEffect::ReturnInput()
 	{
 		//newChar->WalkEnabled = false;
 		newChar->EnableInput(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-		newChar->bIsAlive = true;
+
+		//newChar->bIsAlive = true;
+		bool newAlive = true;
+		newAlive = newChar->CharHealthComponent->GetIsAlive();
 		
 		bIsReturn = true;
 		DestroyObject();
 	}
 }
 	
-	
+// НЕ РАБОТАЕТ
+//void UTPS_StunEffect::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const 
+//{
+//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+//	DOREPLIFETIME(UTPS_StunEffect, NameBone);
+//}
+

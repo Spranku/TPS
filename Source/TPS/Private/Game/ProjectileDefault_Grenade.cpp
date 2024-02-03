@@ -6,7 +6,7 @@
 
 AProjectileDefault_Grenade::AProjectileDefault_Grenade()
 {
-	SetReplicates(true);
+	//SetReplicates(true);
 }
 
 void AProjectileDefault_Grenade::BeginPlay()

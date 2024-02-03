@@ -59,11 +59,14 @@ void AWeaponDefault::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	FireTick(DeltaTime);
-	ReloadTick(DeltaTime);
-	DispersionTick(DeltaTime);
-	ClipDropTick(DeltaTime);
-	ShellDropTick(DeltaTime);
+	if (HasAuthority())
+	{
+		FireTick(DeltaTime);
+		ReloadTick(DeltaTime);
+		DispersionTick(DeltaTime);
+		ClipDropTick(DeltaTime);
+		ShellDropTick(DeltaTime);
+	}
 }
 
 void AWeaponDefault::FireTick(float DeltaTime)
@@ -494,6 +497,7 @@ int32 AWeaponDefault::GetWeaponRound()
 // Ф-я перезарядки
 void AWeaponDefault::InitReload()
 {
+	// On Server
 	WeaponReloading = true;
 
 	// Когда инициализировался таймер, передаем значение
@@ -510,8 +514,6 @@ void AWeaponDefault::InitReload()
 		OnWeaponReloadStart.Broadcast(WeaponSetting.AnimCharReload);
 		AnimWeaponStart_Multicast(WeaponSetting.AnimCharReload);
 	}
-
-	
 
 	// Когда начинается перезарядка, логика InitDropMesh отрабатывает
 	if (WeaponSetting.ClipDropMesh.DropMesh)
@@ -781,7 +783,8 @@ void AWeaponDefault::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AWeaponDefault, AdditionalWeaponInfo);
-	
+	DOREPLIFETIME(AWeaponDefault, WeaponReloading);
+	//DOREPLIFETIME(AWeaponDefault, ShootEndLocation);
 }
 
 /// /////////////////////////////// Это я писал сам, не факт что верно

@@ -3,6 +3,7 @@
 
 #include "/My_Projects/TPS/Source/TPS/Character/TPSInventoryComponent.h"
 #include "/My_Projects/TPS/Source/TPS/Game/TPSGameInstance.h"
+#include "/UE/UE_5.0/Engine/Source/Runtime/Engine/Public/Net/UnrealNetwork.h"
 #pragma optimize ("", off)
 
 // Sets default values for this component's properties
@@ -12,6 +13,7 @@ UTPSInventoryComponent::UTPSInventoryComponent()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
+	SetIsReplicatedByDefault(true);
 	// ...
 }
 
@@ -240,7 +242,8 @@ bool UTPSInventoryComponent::SwitchWeaponToIndexByNextPreviosIndex(int32 ChangeT
 	if (bIsSuccess)
 	{
 		SetAdditionalInfoWeapon(OldIndex, OldInfo);
-		OnSwitchWeapon.Broadcast(NewIdWeapon, NewAdditionalInfo, NewCurrentIndex);
+		SwitchWeaponEvent_OnServer(NewIdWeapon, NewAdditionalInfo, NewCurrentIndex);
+		//OnSwitchWeapon.Broadcast(NewIdWeapon, NewAdditionalInfo, NewCurrentIndex);
 	}
 
 	return bIsSuccess;
@@ -258,7 +261,8 @@ bool UTPSInventoryComponent::SwitchWeaponByIndex(int32 IndexWeaponToChange, int3
 	if (!ToSwitchIdWeapon.IsNone())
 	{
 		SetAdditionalInfoWeapon(PreviosIndex, PreviosWeaponInfo);
-		OnSwitchWeapon.Broadcast(ToSwitchIdWeapon, ToSwitchAdditionalInfo, IndexWeaponToChange);
+		SwitchWeaponEvent_OnServer(ToSwitchIdWeapon, ToSwitchAdditionalInfo, IndexWeaponToChange);
+		//OnSwitchWeapon.Broadcast(ToSwitchIdWeapon, ToSwitchAdditionalInfo, IndexWeaponToChange);
 
 		//check ammo slot for event to player		
 		EWeaponType ToSwitchWeaponType;
@@ -379,8 +383,9 @@ void UTPSInventoryComponent::SetAdditionalInfoWeapon(int32 IndexWeapon, FAdditio
 			{
 				WeaponSlots[i].AdditionalInfo = NewInfo;
 				bIsFind = true;
-
-				OnWeaponAdditionalInfoChange.Broadcast(IndexWeapon, NewInfo);
+				
+				ReloadEvent_Multicast(IndexWeapon,NewInfo);
+				//OnWeaponAdditionalInfoChange.Broadcast(IndexWeapon, NewInfo);
 			}
 			i++;
 		}
@@ -413,7 +418,9 @@ void UTPSInventoryComponent::AmmoSlotChangeValue(EWeaponType TypeWeapon, int32 C
 			if (AmmoSlots[i].Cout > AmmoSlots[i].MaxCout)
 				AmmoSlots[i].Cout = AmmoSlots[i].MaxCout;
 			
-			OnAmmoChange.Broadcast(AmmoSlots[i].WeaponType, AmmoSlots[i].Cout);
+			AmmoChangeEvent_Multicast(AmmoSlots[i].WeaponType, AmmoSlots[i].Cout);
+
+			//OnAmmoChange.Broadcast(AmmoSlots[i].WeaponType, AmmoSlots[i].Cout);
 			bIsFind = true;
 		}
 		i++;
@@ -441,11 +448,13 @@ bool UTPSInventoryComponent::CheckAmmoForWeapon(EWeaponType TypeWeapon, int8 &Av
 
 	if (AviableAmmoForWeapon <= 0)
 	{
-		OnWeaponAmmoEmpty.Broadcast(TypeWeapon);
+		AmmoEmptyEvent_Multicast(TypeWeapon);
+		//OnWeaponAmmoEmpty.Broadcast(TypeWeapon);
 	}
 	else
 	{
-		OnWeaponAmmoAviable.Broadcast(TypeWeapon);
+		AmmoAviable_Multicast(TypeWeapon);
+		//OnWeaponAmmoAviable.Broadcast(TypeWeapon);
 	}
 	
 	return false;
@@ -489,13 +498,14 @@ bool UTPSInventoryComponent::SwitchWeaponToInventory(FWeaponSlot NewWeapon, int3
 	{
 		WeaponSlots[IndexSlot] = NewWeapon;
 		SwitchWeaponToIndexByNextPreviosIndex(CurrentIndexWeaponChar,-1,NewWeapon.AdditionalInfo,true);
-		OnUpdateWeaponSlots.Broadcast(IndexSlot, NewWeapon);
+		UpdateWeaponSlots_Multicast(IndexSlot, NewWeapon);
+		//OnUpdateWeaponSlots.Broadcast(IndexSlot, NewWeapon);
 		result = true;
 	}
 	return result;
 }
 
-bool UTPSInventoryComponent::TryGetWeaponToInventory(FWeaponSlot NewWeapon)
+void UTPSInventoryComponent::TryGetWeaponToInventory_OnServer_Implementation(AActor* PickUpActor,FWeaponSlot NewWeapon)
 {
 	int32 IndexSlot = -1;
 	if (CheckCanTakeWeapon(IndexSlot))
@@ -503,12 +513,17 @@ bool UTPSInventoryComponent::TryGetWeaponToInventory(FWeaponSlot NewWeapon)
 		if (WeaponSlots.IsValidIndex(IndexSlot))
 		{
 			WeaponSlots[IndexSlot] = NewWeapon;
-			OnUpdateWeaponSlots.Broadcast(IndexSlot,NewWeapon);
-			return true;
+			//OnUpdateWeaponSlots.Broadcast(IndexSlot,NewWeapon);
+			UpdateWeaponSlots_Multicast(IndexSlot, NewWeapon);
+
+			if (PickUpActor)
+			{
+				PickUpActor->Destroy();
+			}
 		}	
 	}
-	return false;
 }
+
 
 bool UTPSInventoryComponent::GetDropItemInfoFromInventory(int32 IndexSlot, FDropItem& DropItemInfo)
 {
@@ -537,6 +552,31 @@ TArray<FAmmoSlot> UTPSInventoryComponent::GetAmmoSlots()
 	return AmmoSlots;
 }
 
+void UTPSInventoryComponent::UpdateWeaponSlots_Multicast_Implementation(int32 Index, FWeaponSlot Weapon)
+{
+	OnUpdateWeaponSlots.Broadcast(Index, Weapon);
+}
+
+void UTPSInventoryComponent::AmmoAviable_Multicast_Implementation(EWeaponType WeaponType)
+{
+	OnWeaponAmmoAviable.Broadcast(WeaponType);
+}
+
+void UTPSInventoryComponent::AmmoEmptyEvent_Multicast_Implementation(EWeaponType WeaponType)
+{
+	OnWeaponAmmoEmpty.Broadcast(WeaponType);
+}
+
+void UTPSInventoryComponent::ReloadEvent_Multicast_Implementation(int32 Index, FAdditionalWeaponInfo Info)
+{
+	OnWeaponAdditionalInfoChange.Broadcast(Index, Info);
+}
+
+void UTPSInventoryComponent::AmmoChangeEvent_Multicast_Implementation(EWeaponType TypeWeapon, int32 Cout)
+{
+	OnAmmoChange.Broadcast(TypeWeapon, Cout);
+}
+
 void UTPSInventoryComponent::InitInventory_OnServer_Implementation(const TArray<FWeaponSlot>& NewWeaponSlotsInfo, const TArray<FAmmoSlot>& NewAmmoSlotsInfo)
 {
 	// Записываем слоты на новые
@@ -558,8 +598,26 @@ void UTPSInventoryComponent::InitInventory_OnServer_Implementation(const TArray<
 	if (WeaponSlots.IsValidIndex(0))
 	{
 		if (!WeaponSlots[0].NameItem.IsNone())
-			OnSwitchWeapon.Broadcast(WeaponSlots[0].NameItem, WeaponSlots[0].AdditionalInfo, 0);
+			SwitchWeaponEvent_OnServer(WeaponSlots[0].NameItem, WeaponSlots[0].AdditionalInfo, 0);
+			//OnSwitchWeapon.Broadcast(WeaponSlots[0].NameItem, WeaponSlots[0].AdditionalInfo, 0);
 	}
 }
 
+void UTPSInventoryComponent::SwitchWeaponEvent_OnServer_Implementation(FName Name, FAdditionalWeaponInfo Info, int32 Index)
+{
+	OnSwitchWeapon.Broadcast(Name, Info, Index);
+}
+
+void UTPSInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UTPSInventoryComponent, WeaponSlots);
+	DOREPLIFETIME(UTPSInventoryComponent, AmmoSlots);
+	
+
+}
+
 #pragma optimize ("", on)
+
+

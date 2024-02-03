@@ -34,7 +34,9 @@ public:
 	// Ф-я возвращает массив эффектов того или иного объекта
 	virtual TArray<UTPS_StateEffect*> GetAllCurrentEffects();
 	// Ф-я удаления эффекта
-	virtual void RemoveEffect(UTPS_StateEffect* RemoveEffect);
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void RemoveEffect(UTPS_StateEffect* RemoveEffect);
 	// Ф-я добавления эффекта
-	virtual void AddEffect(UTPS_StateEffect* newEffect);
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void AddEffect(UTPS_StateEffect* newEffect);
 };

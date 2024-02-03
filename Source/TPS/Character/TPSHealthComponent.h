@@ -15,12 +15,12 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDead);
 //	GENERATED_BODY()
 //};
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class TPS_API UTPSHealthComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	// Sets default values for this component's properties
 	UTPSHealthComponent();
 
@@ -33,9 +33,12 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 	// Основной параметр жизни
+	UPROPERTY(Replicated)
 	float Health = 100.0f;
+	UPROPERTY(Replicated)
+	bool bIsAlive = true;
 
-public:	
+public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -47,9 +50,17 @@ public:
 		float GetCurrentHealth();
 	UFUNCTION(BlueprintCallable, Category = "Health")
 		void SetCurrentHealth(float NewHealth);
-
 	UFUNCTION(BlueprintCallable, Category = "Health")
-		virtual void ChangeHealthValue(float ChangeValue);
+		bool GetIsAlive();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Health")
+		virtual void ChangeHealthValue_OnServer(float ChangeValue);
 	// UFUNCTION(BlueprintCallable, Category = "Health")
 	// 	virtual void ReceiveDamage(float Damage);
+
+	//NetWork
+	UFUNCTION(NetMulticast, Reliable)
+		void OnHealthChangeEvent_Multicast(float newHealth, float value);
+	UFUNCTION(NetMulticast, Reliable)
+		void DeadEvent_Multicast();
 };

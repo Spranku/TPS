@@ -3,7 +3,7 @@
 
 #include </My_Projects/TPS/Source/TPS/Character/TPSCharacterHealthComponent.h>
 
-void UTPSCharacterHealthComponent::ChangeHealthValue(float ChangeValue)
+void UTPSCharacterHealthComponent::ChangeHealthValue_OnServer(float ChangeValue)
 {
 	//Логика щита
 
@@ -22,7 +22,7 @@ void UTPSCharacterHealthComponent::ChangeHealthValue(float ChangeValue)
 	}
 	else
 	{
-		Super::ChangeHealthValue(ChangeValue);
+		Super::ChangeHealthValue_OnServer(ChangeValue);
 	}
 }
 
@@ -36,7 +36,8 @@ void UTPSCharacterHealthComponent::ChangeShieldValue(float ChangeValue)
 	// Присвоение щиту значения текущего дамага
 	Shield += ChangeValue;
 
-	OnShieldChange.Broadcast(Shield, ChangeValue);
+	ShieldChangeEvent_Multicast(Shield, ChangeValue);
+	//OnShieldChange.Broadcast(Shield, ChangeValue);
 	
 	// Если щит вышел за границу 100, то вернуть обратно 100
 	if (Shield > 100.0f)
@@ -91,10 +92,16 @@ void UTPSCharacterHealthComponent::RecovryShield()
 	{
 		Shield = tmp;
 	}
-	OnShieldChange.Broadcast(Shield, ShieldRecoveryValue); 
+	ShieldChangeEvent_Multicast(Shield, ShieldRecoveryValue);
+	//OnShieldChange.Broadcast(Shield, ShieldRecoveryValue); 
 }
 
 float UTPSCharacterHealthComponent::GetShieldValue()
 {
 	return Shield;
+}
+
+void UTPSCharacterHealthComponent::ShieldChangeEvent_Multicast_Implementation(float newShield, float Damage)
+{
+	OnShieldChange.Broadcast(newShield, Damage);
 }

@@ -17,10 +17,10 @@ TArray<UTPS_StateEffect*> ITPS_IGameActor::GetAllCurrentEffects()
 	return Effect;
 }
 
-void ITPS_IGameActor::RemoveEffect(UTPS_StateEffect* RemoveEffect)
-{
-}
-
-void ITPS_IGameActor::AddEffect(UTPS_StateEffect* newEffect)
-{
-}
+//void ITPS_IGameActor::RemoveEffect(UTPS_StateEffect* RemoveEffect)
+//{
+//}
+//
+//void ITPS_IGameActor::AddEffect(UTPS_StateEffect* newEffect)
+//{
+//}

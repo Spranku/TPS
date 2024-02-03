@@ -11,7 +11,6 @@
 #include <TPS/Public/Game/TPS_StateEffect.h>
 #include "TPSCharacter.generated.h"
 
-
 //USTRUCT(BlueprintType)
 //struct FCharacterSpeedInfo
 //{
@@ -25,6 +24,8 @@ class ATPSCharacter : public ACharacter, public ITPS_IGameActor
 {
 	GENERATED_BODY()
 protected:
+	bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
+	
 	virtual void BeginPlay() override;
 public:
 	ATPSCharacter();
@@ -45,7 +46,7 @@ public:
 	/** Returns CursorToWorld subobject **/
 	//FORCEINLINE class UDecalComponent* GetCursorToWorld() { return CursorToWorld; }
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
 		class UTPSInventoryComponent* InventoryComponent;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
 		class UTPSCharacterHealthComponent* CharHealthComponent;
@@ -96,8 +97,9 @@ public:
 		bool WalkEnabled = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 		bool AimEnabled = false;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-		bool bIsAlive = true;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	//	bool bIsAlive = true; 
+	
 	// Массив с анимациями смертей 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 		TArray<UAnimMontage*> DeadsAnim;
@@ -105,7 +107,16 @@ public:
 		TSubclassOf<UTPS_StateEffect> AbilityEffect;
 
 	// Массив эффектов 
+	UPROPERTY(Replicated)
 	TArray<UTPS_StateEffect*> Effects;
+	UPROPERTY(ReplicatedUsing = EffectAdd_OnRep)
+		UTPS_StateEffect* EffectAdd = nullptr;
+	UPROPERTY(ReplicatedUsing = EffectRemove_OnRep)
+		UTPS_StateEffect* EffectRemove = nullptr;
+	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "Debag")
+		TArray<UParticleSystemComponent*> PartycleSystemEffects;
+
+
 
 	// переменная таймера спринта
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -121,7 +132,7 @@ public:
 	UDecalComponent* CurrentCursor = nullptr;
 
 	// Индекс текущего оружия
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UPROPERTY(Replicated /*BlueprintReadOnly, EditDefaultsOnly*/ )
 		int32 CurrentIndexWeapon = 0;
 
 	// Описание инпутов вверх-вниз
@@ -146,7 +157,7 @@ public:
 	template<int32 Id>
 	void TKeyPressed()
 	{
-		TrySwitchWeaponToIndexByKeyInput(Id);
+		TrySwitchWeaponToIndexByKeyInput_OnServer(Id);
 	}
 
 	// Переменные для инпутов
@@ -200,8 +211,8 @@ public:
 		void WeaponFireStart(UAnimMontage* Anim);
 	UFUNCTION(BlueprintNativeEvent)
 		void WeaponFireStart_BP(UAnimMontage* Anim);
-
-	bool TrySwitchWeaponToIndexByKeyInput(int32 ToIndex);
+	UFUNCTION(Server, Reliable)
+	void TrySwitchWeaponToIndexByKeyInput_OnServer(int32 ToIndex);
 
 
 
@@ -219,21 +230,29 @@ public:
 	// Interface
 	EPhysicalSurface GetSurfaceType() override;
 	TArray<UTPS_StateEffect*> GetAllCurrentEffects() override;
-	void RemoveEffect(UTPS_StateEffect* RemoveEffect) override;
-	void AddEffect(UTPS_StateEffect* newEffect) override;
+
+	UFUNCTION(BlueprintCallable,BlueprintNativeEvent)
+		void RemoveEffect(UTPS_StateEffect* RemoveEffect);
+	void RemoveEffect_Implementation(UTPS_StateEffect* RemoveEffect) override;
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void AddEffect(UTPS_StateEffect* newEffect) ;
+	void AddEffect_Implementation(UTPS_StateEffect* newEffect) override;
 	// End Interface
 
 	// Ф-я отключения управления пешкой 
 	UFUNCTION(BlueprintCallable)
-	void CharDead();
-	void EnableRagDoll();
+		void CharDead();
+	UFUNCTION(NetMulticast, Reliable)
+		void EnableRagdoll_Multicast();
+
 	virtual float TakeDamage(float DamageAmount, 
 		struct FDamageEvent const& DamageEvent, 
 		class AController* EventInstigator, 
 		AActor* DamageCauser) override;
 
 	UFUNCTION(BlueprintNativeEvent)
-	void CharDead_BP();
+		void CharDead_BP();
 
 	// Network
 	UFUNCTION(Server, Unreliable)
@@ -245,5 +264,22 @@ public:
 		void SetMovementState_OnServer(EMovementState NewState);
 	UFUNCTION(NetMulticast, Reliable)
 		void SetMovementState_Multicast(EMovementState NewState);
+
+	UFUNCTION(Server, Reliable)
+		void TryReloadWeapon_OnServer();
+	UFUNCTION(NetMulticast, Reliable)
+		void PlayAnim_Multicast(UAnimMontage* Anim);
+
+	UFUNCTION()
+		void EffectAdd_OnRep();
+	UFUNCTION()
+		void EffectRemove_OnRep();
+	UFUNCTION(Server, Reliable)
+		void ExecuteEffectAdded_OnServer(UParticleSystem* ExecuteFX);
+	UFUNCTION(NetMulticast, Reliable)
+		void ExecuteEffectAdded_Multicast(UParticleSystem* ExecuteFX);
+
+	UFUNCTION()
+		void SwitchEffect(UTPS_StateEffect* Effect, bool bIsAdd);
 };
 

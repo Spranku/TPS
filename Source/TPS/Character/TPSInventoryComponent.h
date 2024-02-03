@@ -78,9 +78,9 @@ public:
 
 	// Два важных массива для отображения в BP. Слоты оружия и типа патронов.
 	// Всё описано в Type файле
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Weapons")
 		TArray<FWeaponSlot> WeaponSlots;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapons")
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Weapons")
 		TArray<FAmmoSlot> AmmoSlots;
 	// Информация для виджетов (ограничение на слоты)
 		int32 MaxSlotsWeapon = 0;
@@ -116,8 +116,8 @@ public:
 		bool CheckCanTakeWeapon(int32 &FreeSlot);
 	UFUNCTION(BlueprintCallable, Category = "Interface")
 		bool SwitchWeaponToInventory(FWeaponSlot NewWeapon,int32 IndexSlot,int32 CurrentIndexWeaponChar,FDropItem &DropItemInfo);
-	UFUNCTION(BlueprintCallable, Category = "Interface")
-		bool TryGetWeaponToInventory(FWeaponSlot NewWeapon);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Interface")
+		void TryGetWeaponToInventory_OnServer(AActor* PickUpActor, FWeaponSlot NewWeapon);
 	UFUNCTION(BlueprintCallable, Category = "Interface")
 		bool GetDropItemInfoFromInventory(int32 IndexSlot, FDropItem &DropItemInfo);
 
@@ -126,6 +126,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inv")
 		TArray<FAmmoSlot> GetAmmoSlots();
 
+	//NetWork
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Inv")
 		void InitInventory_OnServer(const TArray<FWeaponSlot>& NewWeaponSlotsInfo, const TArray<FAmmoSlot>& NewAmmoSlotsInfo);
+	UFUNCTION(NetMulticast, Reliable)
+		void AmmoChangeEvent_Multicast(EWeaponType TypeWeapon, int32 Cout);
+
+	UFUNCTION(Server, Reliable)
+		void SwitchWeaponEvent_OnServer(FName Name, FAdditionalWeaponInfo Info, int32 Index);
+	UFUNCTION(NetMulticast, Reliable)
+		void ReloadEvent_Multicast(int32 Index, FAdditionalWeaponInfo Info);
+	UFUNCTION(NetMulticast, Reliable)
+		void AmmoEmptyEvent_Multicast(EWeaponType WeaponType);
+	UFUNCTION(NetMulticast,  Reliable)
+		void AmmoAviable_Multicast(EWeaponType WeaponType);
+	UFUNCTION(NetMulticast,  Reliable)
+		void UpdateWeaponSlots_Multicast(int32 Index, FWeaponSlot Weapon);
 };

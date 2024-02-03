@@ -44,8 +44,8 @@ AProjectileDefault::AProjectileDefault()
 	// Проджектайл. Апдейт компонент является рут компонентом. Начальная и максимальная скорость 
 	BulletProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("Bullet ProjectileMovement"));
 	BulletProjectileMovement->UpdatedComponent = RootComponent;
-	BulletProjectileMovement->InitialSpeed = 1.f;
-	BulletProjectileMovement->MaxSpeed = 0.f;
+	//BulletProjectileMovement->InitialSpeed = 1.f;
+	//BulletProjectileMovement->MaxSpeed = 0.f;
 
 	BulletSound = CreateDefaultSubobject<UAudioComponent>(TEXT("BulletAudio"));
 	BulletSound->SetupAttachment(RootComponent);
@@ -81,9 +81,9 @@ void AProjectileDefault::InitProjectile(FProjectileInfo InitParam)
 {
 	// Вызывается, когда инициализируется выстрел
 	// Устанавливает скорость и время жизни пули
-	BulletProjectileMovement->InitialSpeed = InitParam.ProjcetileInitSpeed;
+	//BulletProjectileMovement->InitialSpeed = InitParam.ProjcetileInitSpeed;
 	//  Выставляем сразу максимальную скорость, чтобы была возможность сделать гранаты
-	BulletProjectileMovement->MaxSpeed = InitParam.ProjcetileInitSpeed;
+	//BulletProjectileMovement->MaxSpeed = InitParam.ProjcetileInitSpeed;
 	this->SetLifeSpan(InitParam.ProjectileLifeTime);   
 
 	// Эта часть кода проверяет используется ли статик меш или FX
@@ -103,6 +103,8 @@ void AProjectileDefault::InitProjectile(FProjectileInfo InitParam)
 	}
 	else
 		BulletFX->DestroyComponent();
+
+	InitVelocity_Multicast(InitParam.ProjcetileInitSpeed, BulletProjectileMovement->MaxSpeed = InitParam.ProjcetileInitSpeed);
 
 	ProjectileSetting = InitParam;
 }
@@ -202,4 +204,22 @@ void AProjectileDefault::InitVisualTrailProjectile_Multicast_Implementation(UPar
 {
 	BulletFX->SetTemplate(NewTemplate);
 	BulletFX->SetRelativeTransform(TemplateRelative);
+}
+
+void AProjectileDefault::InitVelocity_Multicast_Implementation(float InitSpeed, float MaxSpeed)
+{
+	if (BulletProjectileMovement)
+	{
+		BulletProjectileMovement->Velocity = GetActorForwardVector() * InitSpeed;
+		BulletProjectileMovement->MaxSpeed = MaxSpeed;
+		BulletProjectileMovement->InitialSpeed = InitSpeed;
+	}
+}
+
+void AProjectileDefault::PostNetReceiveVelocity(const FVector& NewVelocity)
+{
+	if (BulletProjectileMovement)
+	{
+		BulletProjectileMovement->Velocity = NewVelocity;
+	}
 }
